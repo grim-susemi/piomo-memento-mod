@@ -1,0 +1,13 @@
+{
+  "name": "piomo-memento-mod",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=24" },
+  "pi": { "extensions": ["./src/extension.mjs"] },
+  "scripts": {
+    "test": "node --test --test-isolation=none test/*.test.mjs",
+    "build": "node scripts/build.mjs",
+    "check": "npm test && npm run build"
+  }
+}

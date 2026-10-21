@@ -1,0 +1,209 @@
+{
+  "cases": [
+    {
+      "name": "valid",
+      "body": {
+        "action": "setStatus",
+        "id": "20261003-cdef",
+        "status": "building",
+        "rev": 2,
+        "requestId": "req-0001"
+      },
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "name": "stale rev",
+      "body": {
+        "action": "setStatus",
+        "id": "20261003-cdef",
+        "status": "building",
+        "rev": 1,
+        "requestId": "req-0001"
+      },
+      "expect": {
+        "status": 409,
+        "code": "STALE"
+      }
+    },
+    {
+      "name": "unknown id",
+      "body": {
+        "action": "setStatus",
+        "id": "20260101-zzzz",
+        "status": "done",
+        "rev": 1,
+        "requestId": "req-0001"
+      },
+      "expect": {
+        "status": 400,
+        "code": "UNKNOWN_CARD"
+      }
+    },
+    {
+      "name": "bad status",
+      "body": {
+        "action": "setStatus",
+        "id": "20261003-cdef",
+        "status": "shipped",
+        "rev": 2,
+        "requestId": "req-0001"
+      },
+      "expect": {
+        "status": 400,
+        "code": "BAD_STATUS"
+      }
+    },
+    {
+      "name": "extra key",
+      "body": {
+        "action": "setStatus",
+        "id": "20261003-cdef",
+        "status": "done",
+        "rev": 2,
+        "requestId": "req-0001",
+        "force": true
+      },
+      "expect": {
+        "status": 400,
+        "code": "BAD_REQUEST"
+      }
+    },
+    {
+      "name": "missing requestId",
+      "body": {
+        "action": "setStatus",
+        "id": "20261003-cdef",
+        "status": "done",
+        "rev": 2
+      },
+      "expect": {
+        "status": 400,
+        "code": "BAD_REQUEST"
+      }
+    },
+    {
+      "name": "unreadable card",
+      "body": {
+        "action": "setStatus",
+        "id": "20261009-ab23",
+        "status": "done",
+        "rev": 1,
+        "requestId": "req-0001"
+      },
+      "expect": {
+        "status": 400,
+        "code": "UNKNOWN_CARD"
+      }
+    },
+    {
+      "name": "conflict card owner pick",
+      "body": {
+        "action": "setStatus",
+        "id": "20261008-hab2",
+        "status": "building",
+        "rev": 2,
+        "requestId": "req-0001"
+      },
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "name": "deleted card",
+      "body": {
+        "action": "setStatus",
+        "id": "20261010-b234",
+        "status": "done",
+        "rev": 2,
+        "requestId": "req-0001"
+      },
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "name": "pending card",
+      "body": {
+        "action": "setStatus",
+        "id": "20261011-c345",
+        "status": "researching",
+        "rev": 1,
+        "requestId": "req-0001"
+      },
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "name": "invalid remote card",
+      "body": {
+        "action": "setStatus",
+        "id": "20261012-d456",
+        "status": "done",
+        "rev": 14,
+        "requestId": "req-0001"
+      },
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "name": "cut korean card stale",
+      "body": {
+        "action": "setStatus",
+        "id": "20261012-d456",
+        "status": "done",
+        "rev": 1,
+        "requestId": "req-0001"
+      },
+      "expect": {
+        "status": 409,
+        "code": "STALE"
+      }
+    },
+    {
+      "name": "wrong action",
+      "body": {
+        "action": "delete",
+        "id": "20261003-cdef",
+        "status": "done",
+        "rev": 2,
+        "requestId": "req-0001"
+      },
+      "expect": {
+        "status": 400,
+        "code": "BAD_REQUEST"
+      }
+    },
+    {
+      "name": "empty requestId",
+      "body": {
+        "action": "setStatus",
+        "id": "20261003-cdef",
+        "status": "done",
+        "rev": 2,
+        "requestId": ""
+      },
+      "expect": {
+        "status": 400,
+        "code": "BAD_REQUEST"
+      }
+    },
+    {
+      "name": "string rev",
+      "body": {
+        "action": "setStatus",
+        "id": "20261003-cdef",
+        "status": "done",
+        "rev": "2",
+        "requestId": "req-0001"
+      },
+      "expect": {
+        "status": 400,
+        "code": "BAD_REQUEST"
+      }
+    }
+  ]
+}

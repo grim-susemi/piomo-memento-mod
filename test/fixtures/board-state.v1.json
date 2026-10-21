@@ -1,0 +1,523 @@
+{
+  "schema": "memento.board-state.v1",
+  "ok": true,
+  "lastSync": "2026-10-12T20:00:00+09:00",
+  "unpushedCommits": 0,
+  "statuses": [
+    {
+      "key": "idea",
+      "label": "메모"
+    },
+    {
+      "key": "researching",
+      "label": "조사중"
+    },
+    {
+      "key": "planned",
+      "label": "계획됨"
+    },
+    {
+      "key": "building",
+      "label": "구현중"
+    },
+    {
+      "key": "done",
+      "label": "완료"
+    },
+    {
+      "key": "held",
+      "label": "보류"
+    },
+    {
+      "key": "dropped",
+      "label": "폐기"
+    }
+  ],
+  "cards": [
+    {
+      "id": "20261012-d456",
+      "rev": 14,
+      "title": "예시 아이디어 12",
+      "description": "예시 설명 12",
+      "status": "building",
+      "created": "2026-10-11T21:00:00.000Z",
+      "updated": "2026-10-12T10:00:00.000Z",
+      "source": "paste",
+      "sourceRef": "paste:example-12",
+      "original": "가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사",
+      "notes": "메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 메모 ",
+      "originalTruncated": true,
+      "notesTruncated": true,
+      "discord": {
+        "state": "invalid",
+        "url": "https://discord.com/channels/example/thread-12"
+      },
+      "log": [
+        {
+          "at": "2026-10-12T10:00:00.000Z",
+          "actor": "memento",
+          "via": "sync",
+          "change": "invalid-remote",
+          "reason": "thread has 0 status tags"
+        },
+        {
+          "at": "2026-10-12T09:00:00.000Z",
+          "actor": "owner",
+          "via": "board",
+          "change": "status",
+          "from": "researching",
+          "to": "building",
+          "reason": "step 13"
+        },
+        {
+          "at": "2026-10-12T08:00:00.000Z",
+          "actor": "memento",
+          "via": "sync",
+          "change": "status",
+          "from": "building",
+          "to": "researching",
+          "reason": "step 12"
+        },
+        {
+          "at": "2026-10-12T07:00:00.000Z",
+          "actor": "owner",
+          "via": "board",
+          "change": "status",
+          "from": "planned",
+          "to": "building",
+          "reason": "step 11"
+        },
+        {
+          "at": "2026-10-12T06:00:00.000Z",
+          "actor": "memento",
+          "via": "sync",
+          "change": "status",
+          "from": "held",
+          "to": "planned",
+          "reason": "step 10"
+        },
+        {
+          "at": "2026-10-12T05:00:00.000Z",
+          "actor": "owner",
+          "via": "board",
+          "change": "status",
+          "from": "building",
+          "to": "held",
+          "reason": "step 9"
+        },
+        {
+          "at": "2026-10-12T04:00:00.000Z",
+          "actor": "memento",
+          "via": "sync",
+          "change": "status",
+          "from": "done",
+          "to": "building",
+          "reason": "step 8"
+        },
+        {
+          "at": "2026-10-12T03:00:00.000Z",
+          "actor": "owner",
+          "via": "board",
+          "change": "status",
+          "from": "building",
+          "to": "done",
+          "reason": "step 7"
+        },
+        {
+          "at": "2026-10-12T02:00:00.000Z",
+          "actor": "memento",
+          "via": "sync",
+          "change": "status",
+          "from": "held",
+          "to": "building",
+          "reason": "step 6"
+        },
+        {
+          "at": "2026-10-12T01:00:00.000Z",
+          "actor": "owner",
+          "via": "board",
+          "change": "status",
+          "from": "building",
+          "to": "held",
+          "reason": "step 5"
+        }
+      ]
+    },
+    {
+      "id": "20261011-c345",
+      "rev": 1,
+      "title": "예시 아이디어 11",
+      "description": "예시 설명 11",
+      "status": "idea",
+      "created": "2026-10-11T09:00:00+09:00",
+      "updated": "2026-10-11T12:00:00+09:00",
+      "source": "paste",
+      "sourceRef": "paste:example-11",
+      "original": "예시 원문 11",
+      "notes": "",
+      "originalTruncated": false,
+      "notesTruncated": false,
+      "discord": {
+        "state": "posting"
+      },
+      "log": [
+        {
+          "at": "2026-10-11T09:00:00+09:00",
+          "actor": "memento",
+          "via": "paste",
+          "change": "create",
+          "reason": "pasted memo"
+        }
+      ]
+    },
+    {
+      "id": "20261010-b234",
+      "rev": 2,
+      "title": "예시 아이디어 10",
+      "description": "예시 설명 10",
+      "status": "held",
+      "created": "2026-10-10T09:00:00+09:00",
+      "updated": "2026-10-10T12:00:00+09:00",
+      "source": "paste",
+      "sourceRef": "paste:example-10",
+      "original": "예시 원문 10",
+      "notes": "",
+      "originalTruncated": false,
+      "notesTruncated": false,
+      "discord": {
+        "state": "deleted"
+      },
+      "log": [
+        {
+          "at": "2026-10-10T13:00:00+09:00",
+          "actor": "memento",
+          "via": "sync",
+          "change": "remote-deleted",
+          "reason": "thread 404"
+        },
+        {
+          "at": "2026-10-10T12:00:00+09:00",
+          "actor": "owner",
+          "via": "board",
+          "change": "status",
+          "from": "idea",
+          "to": "held",
+          "reason": "board pick"
+        },
+        {
+          "at": "2026-10-10T09:00:00+09:00",
+          "actor": "memento",
+          "via": "paste",
+          "change": "create",
+          "reason": "pasted memo"
+        }
+      ]
+    },
+    {
+      "id": "20261008-hab2",
+      "rev": 2,
+      "title": "예시 아이디어 8",
+      "description": "예시 설명 8",
+      "status": "planned",
+      "created": "2026-10-08T09:00:00+09:00",
+      "updated": "2026-10-08T12:00:00+09:00",
+      "source": "paste",
+      "sourceRef": "paste:example-8",
+      "original": "예시 원문 8",
+      "notes": "",
+      "originalTruncated": false,
+      "notesTruncated": false,
+      "discord": {
+        "state": "conflict",
+        "url": "https://discord.com/channels/example/thread-8"
+      },
+      "log": [
+        {
+          "at": "2026-10-08T13:00:00+09:00",
+          "actor": "memento",
+          "via": "sync",
+          "change": "conflict",
+          "reason": "owner phone change overlaps board pick"
+        },
+        {
+          "at": "2026-10-08T12:00:00+09:00",
+          "actor": "owner",
+          "via": "board",
+          "change": "status",
+          "from": "idea",
+          "to": "planned",
+          "reason": "board pick"
+        },
+        {
+          "at": "2026-10-08T09:00:00+09:00",
+          "actor": "memento",
+          "via": "paste",
+          "change": "create",
+          "reason": "pasted memo"
+        }
+      ],
+      "conflict": {
+        "card": "planned",
+        "discord": [
+          "building"
+        ],
+        "since": "2026-10-08T13:00:00+09:00"
+      }
+    },
+    {
+      "id": "20261007-ghab",
+      "rev": 2,
+      "title": "예시 아이디어 7",
+      "description": "예시 설명 7",
+      "status": "dropped",
+      "created": "2026-10-07T09:00:00+09:00",
+      "updated": "2026-10-07T12:00:00+09:00",
+      "source": "paste",
+      "sourceRef": "paste:example-7",
+      "original": "예시 원문 7",
+      "notes": "",
+      "originalTruncated": false,
+      "notesTruncated": false,
+      "discord": {
+        "state": "linked",
+        "url": "https://discord.com/channels/example/thread-7"
+      },
+      "log": [
+        {
+          "at": "2026-10-07T12:00:00+09:00",
+          "actor": "owner",
+          "via": "board",
+          "change": "status",
+          "from": "idea",
+          "to": "dropped",
+          "reason": "board pick"
+        },
+        {
+          "at": "2026-10-07T09:00:00+09:00",
+          "actor": "memento",
+          "via": "paste",
+          "change": "create",
+          "reason": "pasted memo"
+        }
+      ]
+    },
+    {
+      "id": "20261006-fgha",
+      "rev": 2,
+      "title": "예시 아이디어 6",
+      "description": "예시 설명 6",
+      "status": "held",
+      "created": "2026-10-06T09:00:00+09:00",
+      "updated": "2026-10-06T12:00:00+09:00",
+      "source": "paste",
+      "sourceRef": "paste:example-6",
+      "original": "예시 원문 6",
+      "notes": "",
+      "originalTruncated": false,
+      "notesTruncated": false,
+      "discord": {
+        "state": "linked",
+        "url": "https://discord.com/channels/example/thread-6"
+      },
+      "log": [
+        {
+          "at": "2026-10-06T12:00:00+09:00",
+          "actor": "owner",
+          "via": "board",
+          "change": "status",
+          "from": "idea",
+          "to": "held",
+          "reason": "board pick"
+        },
+        {
+          "at": "2026-10-06T09:00:00+09:00",
+          "actor": "memento",
+          "via": "paste",
+          "change": "create",
+          "reason": "pasted memo"
+        }
+      ]
+    },
+    {
+      "id": "20261005-efgh",
+      "rev": 2,
+      "title": "예시 아이디어 5",
+      "description": "예시 설명 5",
+      "status": "done",
+      "created": "2026-10-05T09:00:00+09:00",
+      "updated": "2026-10-05T12:00:00+09:00",
+      "source": "paste",
+      "sourceRef": "paste:example-5",
+      "original": "예시 원문 5",
+      "notes": "",
+      "originalTruncated": false,
+      "notesTruncated": false,
+      "discord": {
+        "state": "linked",
+        "url": "https://discord.com/channels/example/thread-5"
+      },
+      "log": [
+        {
+          "at": "2026-10-05T12:00:00+09:00",
+          "actor": "owner",
+          "via": "board",
+          "change": "status",
+          "from": "idea",
+          "to": "done",
+          "reason": "board pick"
+        },
+        {
+          "at": "2026-10-05T09:00:00+09:00",
+          "actor": "memento",
+          "via": "paste",
+          "change": "create",
+          "reason": "pasted memo"
+        }
+      ]
+    },
+    {
+      "id": "20261004-defg",
+      "rev": 2,
+      "title": "예시 아이디어 4",
+      "description": "예시 설명 4",
+      "status": "building",
+      "created": "2026-10-04T09:00:00+09:00",
+      "updated": "2026-10-04T12:00:00+09:00",
+      "source": "paste",
+      "sourceRef": "paste:example-4",
+      "original": "예시 원문 4",
+      "notes": "",
+      "originalTruncated": false,
+      "notesTruncated": false,
+      "discord": {
+        "state": "linked",
+        "url": "https://discord.com/channels/example/thread-4"
+      },
+      "log": [
+        {
+          "at": "2026-10-04T12:00:00+09:00",
+          "actor": "owner",
+          "via": "board",
+          "change": "status",
+          "from": "idea",
+          "to": "building",
+          "reason": "board pick"
+        },
+        {
+          "at": "2026-10-04T09:00:00+09:00",
+          "actor": "memento",
+          "via": "paste",
+          "change": "create",
+          "reason": "pasted memo"
+        }
+      ]
+    },
+    {
+      "id": "20261003-cdef",
+      "rev": 2,
+      "title": "예시 아이디어 3",
+      "description": "예시 설명 3",
+      "status": "planned",
+      "created": "2026-10-03T09:00:00+09:00",
+      "updated": "2026-10-03T12:00:00+09:00",
+      "source": "paste",
+      "sourceRef": "paste:example-3",
+      "original": "예시 원문 3",
+      "notes": "",
+      "originalTruncated": false,
+      "notesTruncated": false,
+      "discord": {
+        "state": "linked",
+        "url": "https://discord.com/channels/example/thread-3"
+      },
+      "log": [
+        {
+          "at": "2026-10-03T12:00:00+09:00",
+          "actor": "owner",
+          "via": "board",
+          "change": "status",
+          "from": "idea",
+          "to": "planned",
+          "reason": "board pick"
+        },
+        {
+          "at": "2026-10-03T09:00:00+09:00",
+          "actor": "memento",
+          "via": "paste",
+          "change": "create",
+          "reason": "pasted memo"
+        }
+      ]
+    },
+    {
+      "id": "20261002-bcde",
+      "rev": 2,
+      "title": "예시 아이디어 2",
+      "description": "예시 설명 2",
+      "status": "researching",
+      "created": "2026-10-02T09:00:00+09:00",
+      "updated": "2026-10-02T12:00:00+09:00",
+      "source": "paste",
+      "sourceRef": "paste:example-2",
+      "original": "예시 원문 2",
+      "notes": "",
+      "originalTruncated": false,
+      "notesTruncated": false,
+      "discord": {
+        "state": "linked",
+        "url": "https://discord.com/channels/example/thread-2"
+      },
+      "log": [
+        {
+          "at": "2026-10-02T12:00:00+09:00",
+          "actor": "owner",
+          "via": "board",
+          "change": "status",
+          "from": "idea",
+          "to": "researching",
+          "reason": "board pick"
+        },
+        {
+          "at": "2026-10-02T09:00:00+09:00",
+          "actor": "memento",
+          "via": "paste",
+          "change": "create",
+          "reason": "pasted memo"
+        }
+      ],
+      "project": "example-project"
+    },
+    {
+      "id": "20261001-abcd",
+      "rev": 1,
+      "title": "예시 아이디어 1",
+      "description": "예시 설명 1",
+      "status": "idea",
+      "created": "2026-10-01T09:00:00+09:00",
+      "updated": "2026-10-01T12:00:00+09:00",
+      "source": "paste",
+      "sourceRef": "paste:example-1",
+      "original": "예시 원문 1",
+      "notes": "",
+      "originalTruncated": false,
+      "notesTruncated": false,
+      "discord": {
+        "state": "none"
+      },
+      "log": [
+        {
+          "at": "2026-10-01T09:00:00+09:00",
+          "actor": "memento",
+          "via": "paste",
+          "change": "create",
+          "reason": "pasted memo"
+        }
+      ]
+    },
+    {
+      "id": "20261009-ab23",
+      "unreadable": "invalid utf-8",
+      "log": []
+    }
+  ]
+}
