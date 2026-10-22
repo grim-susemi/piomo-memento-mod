@@ -16,6 +16,7 @@ export const SET_STATUS_KEYS = Object.freeze(['action', 'id', 'status', 'rev', '
 export const REPLY_CODES = Object.freeze({
   409: ['STALE', 'BUSY'],
   400: ['BAD_REQUEST', 'UNKNOWN_CARD', 'BAD_STATUS'],
+  500: ['WRITE_FAILED'],
   501: ['MEMENTO_UNAVAILABLE', 'API_VERSION_UNSUPPORTED'],
 });
 
@@ -171,7 +172,8 @@ export function expectedSetStatusVerdict(state, body) {
   return { status: 200 };
 }
 
-// Shape check of any POST /memento reply {status, body}.
+// Shape check of any POST /memento reply {status, body}. The 500 WRITE_FAILED
+// reply is exactly {ok:false, code:'WRITE_FAILED'}: no extra keys, no rev, no detail.
 export function validateReply(reply) {
   if (!isObj(reply) || !isObj(reply.body)) return false;
   const { status, body } = reply;

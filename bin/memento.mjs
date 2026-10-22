@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { existsSync, lstatSync } from 'node:fs';
 import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
-import { join, resolve } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { parseArgs } from 'node:util';
 import { loadConfig, resolveAgentDir } from '../src/config.mjs';
@@ -9,9 +9,13 @@ import { loadConfig, resolveAgentDir } from '../src/config.mjs';
 const CODEC = new URL('../src/card/codec.mjs', import.meta.url);
 const DISCORD_CLIENT = new URL('../src/discord/client.mjs', import.meta.url);
 const WIKI_SCANNER = new URL('../src/wiki/scan.mjs', import.meta.url);
+const WIKI_IMPORT = new URL('../src/wiki/import.mjs', import.meta.url);
 const PROBE = new URL('../src/probe/probe.mjs', import.meta.url);
 const LEAK_SCAN = new URL('../src/probe/leak-scan.mjs', import.meta.url);
 const STORE_INIT = new URL('../src/store/init.mjs', import.meta.url);
+const STORE = new URL('../src/store/store.mjs', import.meta.url);
+const INTAKE_SESSION = new URL('../src/intake/session.mjs', import.meta.url);
+const RECEIPTS = new URL('../src/receipts.mjs', import.meta.url);
 const OUTPUT_FILES = [
   'wiki-hash-before.json',
   'wiki-hash-after.json',
@@ -38,6 +42,13 @@ Commands:
                                        counts only, never a match.
   init <dir> [--remote <url>]          Create the card data repository and its
                                        initial commit locally; never pushes.
+  capture-from-session --session <jsonl> --items <json>
+                                       Create cards for seeding from one session:
+                                       every original must copy text from one
+                                       user row verbatim. No push or Discord call.
+  wiki-import --candidates <file> --pick <rows> [--root <dir>]
+                                       Import picked old-wiki candidate rows as
+                                       idea cards; never writes under the wiki.
 
 Options:
   --parse <file>            Parse a card file with src/card/codec.mjs.
@@ -47,6 +58,10 @@ Options:
   --out <dir>               Output directory for wiki-scan or probe; wiki-scan refuses an
                             existing output set, probe resumes from its own state file.
   --remote <url>            Initial remote URL for init (git remote add origin; no push).
+  --session <file>          Session JSONL for capture-from-session.
+  --candidates <file>       wiki-candidates.json for wiki-import.
+  --pick <rows>             Comma-separated candidate row numbers for wiki-import.
+  --items <file>            UTF-8 JSON items for capture-from-session (array or {items}).
   --forum-id <id>           Existing forum channel for probe (after owner creation).
   --phase <mode>            Probe phase: auto, setup or owner (default auto).
   --prepare-only            Probe: after setup, delete the disposable probe post and
@@ -433,6 +448,130 @@ async function runInitCommand(values, positionals) {
   return 0;
 }
 
+async function runCaptureFromSessionCommand(values) {
+  if (!values.session || !values.items) {
+    console.error('capture-from-session needs --session <file> --items <file>');
+    return 2;
+  }
+  const config = loadConfig();
+  if (config.state !== 'configured') {
+    console.log(`memento: ${config.state} (${config.reason})`);
+    return 2;
+  }
+  if (!existsSync(INTAKE_SESSION) || !existsSync(STORE) || !existsSync(RECEIPTS)) {
+    console.log('capture-from-session: unavailable');
+    return 3;
+  }
+  const { captureFromSessionFile } = await import(pathToFileURL(fileURLToPath(INTAKE_SESSION)).href);
+  const { openStore } = await import(pathToFileURL(fileURLToPath(STORE)).href);
+  const { createReceipts } = await import(pathToFileURL(fileURLToPath(RECEIPTS)).href);
+  let result;
+  try {
+    result = await captureFromSessionFile({
+      store: openStore(config.repoPath),
+      sessionFile: values.session,
+      itemsFile: values.items,
+      receipts: createReceipts({ agentDir: config.agentDir }),
+      config,
+    });
+  } catch (error) {
+    console.error(`capture-from-session failed: ${error?.code ?? error?.name ?? 'error'}`);
+    return 1;
+  }
+  if (!result.ok) {
+    console.log(`capture-from-session: ${result.error}`);
+    return result.code === 'SESSION_UNREADABLE' || result.code === 'ITEMS_INVALID' || result.code === 'REPO_UNINITIALIZED'
+      ? 2
+      : 1;
+  }
+  for (const entry of result.created) console.log(`card: ${entry.id} (${entry.discordState})`);
+  for (const entry of result.skipped) console.log(`skipped: duplicate ${entry.id}`);
+  for (const entry of result.rejected) console.log(`rejected: ${entry.error}`);
+  console.log(`memento: created ${result.created.length} skipped ${result.skipped.length} rejected ${result.rejected.length}`);
+  return result.rejected.length === 0 ? 0 : 1;
+}
+
+async function runWikiImportCommand(values) {
+  if (!values.candidates || !values.pick) {
+    console.error('wiki-import needs --candidates <file> --pick <rows>');
+    return 2;
+  }
+  if (!existsSync(WIKI_IMPORT)) {
+    console.log('wiki-import: unavailable (src/wiki/import.mjs is not installed yet)');
+    return 3;
+  }
+  let candidates;
+  try {
+    candidates = JSON.parse(await readFile(resolve(values.candidates), 'utf8'));
+  } catch (error) {
+    console.log(`wiki-import: candidates unreadable (${error?.code ?? 'invalid'})`);
+    return 2;
+  }
+  if (!candidates || !Array.isArray(candidates.rows)) {
+    console.log('wiki-import: candidates file has no rows array');
+    return 2;
+  }
+  const config = loadConfig();
+  if (config.state !== 'configured') {
+    console.log(`memento: ${config.state} (${config.reason})`);
+    return 2;
+  }
+  if (!existsSync(STORE)) {
+    console.log('wiki-import: unavailable');
+    return 3;
+  }
+  const root = values.root ?? candidates.root;
+  if (!root) {
+    console.error('wiki-import needs --root <dir>');
+    return 2;
+  }
+  const beforeFile = join(dirname(resolve(values.candidates)), 'wiki-hash-before.json');
+  let beforeHashes = null;
+  try {
+    const parsed = JSON.parse(await readFile(beforeFile, 'utf8'));
+    if (parsed && typeof parsed === 'object' && parsed.files && typeof parsed.files === 'object') {
+      beforeHashes = parsed;
+    }
+  } catch {
+    beforeHashes = null;
+  }
+  if (!beforeHashes) {
+    console.log(`wiki-import: scan before-manifest missing or unreadable (${beforeFile}); run wiki-scan first`);
+    return 2;
+  }
+  const { openStore } = await import(pathToFileURL(fileURLToPath(STORE)).href);
+  const { importPickedRows, WikiImportError } = await import(
+    pathToFileURL(fileURLToPath(WIKI_IMPORT)).href,
+  );
+  let result;
+  try {
+    result = await importPickedRows({
+      store: openStore(config.repoPath),
+      root,
+      rows: candidates.rows,
+      pick: values.pick,
+      beforeHashes,
+      repoDir: config.repoPath,
+    });
+  } catch (error) {
+    if (error instanceof WikiImportError
+      && (error.code === 'BAD_PICK' || error.code === 'REPO_INSIDE_WIKI')) {
+      console.log(`wiki-import: ${error.message}`);
+      return 2;
+    }
+    console.error(`wiki-import failed: ${error?.code ?? error?.message ?? 'unknown'}`);
+    return 1;
+  }
+  for (const entry of result.created) console.log(`card: ${entry.id} (row ${entry.n})`);
+  for (const entry of result.skipped) {
+    console.log(`skipped: row ${entry.n} ${entry.reason}${entry.id ? ` ${entry.id}` : ''}${entry.pattern ? ` (${entry.pattern})` : ''}`);
+  }
+  for (const entry of result.failed) console.log(`failed: row ${entry.n} ${entry.code}`);
+  console.log(`memento: created ${result.created.length} skipped ${result.skipped.length} failed ${result.failed.length}`);
+  console.log(`wiki-import: hashes ${result.hashesEqual ? 'equal' : 'CHANGED'}`);
+  return result.failed.length === 0 && result.hashesEqual ? 0 : 1;
+}
+
 async function main(argv) {
   let values;
   let positionals;
@@ -458,6 +597,10 @@ async function main(argv) {
         git: { type: 'string', multiple: true },
         also: { type: 'string' },
         remote: { type: 'string' },
+        session: { type: 'string' },
+        items: { type: 'string' },
+        candidates: { type: 'string' },
+        pick: { type: 'string' },
       },
       allowPositionals: true,
     }));
@@ -472,8 +615,16 @@ async function main(argv) {
   }
   const command = positionals[0];
   const baseUrl = values['base-url'];
-  if (values.root !== undefined && command !== 'wiki-scan') {
-    console.error('--root needs wiki-scan');
+  if (values.root !== undefined && command !== 'wiki-scan' && command !== 'wiki-import') {
+    console.error('--root needs wiki-scan or wiki-import');
+    return 2;
+  }
+  if (values.candidates !== undefined && command !== 'wiki-import') {
+    console.error('--candidates needs wiki-import');
+    return 2;
+  }
+  if (values.pick !== undefined && command !== 'wiki-import') {
+    console.error('--pick needs wiki-import');
     return 2;
   }
   if (values.out !== undefined && command !== 'wiki-scan' && command !== 'probe') {
@@ -484,11 +635,21 @@ async function main(argv) {
     console.error('--remote needs init');
     return 2;
   }
+  if (values.session !== undefined && command !== 'capture-from-session') {
+    console.error('--session needs capture-from-session');
+    return 2;
+  }
+  if (values.items !== undefined && command !== 'capture-from-session') {
+    console.error('--items needs capture-from-session');
+    return 2;
+  }
   if (values['prepare-only'] && command !== 'probe') {
     console.error('--prepare-only needs probe');
     return 2;
   }
   if (command === 'init') return runInitCommand(values, positionals);
+  if (command === 'capture-from-session') return runCaptureFromSessionCommand(values);
+  if (command === 'wiki-import') return runWikiImportCommand(values);
   if (command === 'probe') return runProbeCommand(values);
   if (command === 'leak-scan') return runLeakScanCommand(values);
   if (command === 'wiki-scan') {

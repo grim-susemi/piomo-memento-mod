@@ -1,0 +1,11 @@
+{
+  "replies": [
+    {
+      "status": 500,
+      "body": {
+        "ok": false,
+        "code": "WRITE_FAILED"
+      }
+    }
+  ]
+}

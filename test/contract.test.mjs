@@ -9,6 +9,7 @@ import { validateCard as validateSourceCard, serialize, parse } from '../src/car
 const load = (name) => JSON.parse(readFileSync(new URL(`./fixtures/${name}`, import.meta.url), 'utf8'));
 const state = load('board-state.v1.json');
 const { cases } = load('setStatus-cases.json');
+const { replies } = load('replies.json');
 const clone = (v) => structuredClone(v);
 const source = load('board-source-card.json');
 
@@ -60,11 +61,25 @@ test('each setStatus case yields its expected verdict', () => {
   for (const c of cases) assert.deepEqual(expectedSetStatusVerdict(state, c.body), c.expect, c.name);
 });
 
+test('canonical reply fixture is the exact WRITE_FAILED 500', () => {
+  assert.equal(replies.length, 1);
+  assert.deepEqual(replies[0], { status: 500, body: { ok: false, code: 'WRITE_FAILED' } });
+  for (const r of replies) assert.equal(validateReply(r), true);
+});
+
 test('reply shapes', () => {
   assert.equal(validateReply({ status: 200, body: { ok: true, rev: 3, discord: 'pending' } }), true);
   assert.equal(validateReply({ status: 409, body: { ok: false, code: 'STALE', rev: 3 } }), true);
   assert.equal(validateReply({ status: 409, body: { ok: false, code: 'BUSY' } }), true);
   assert.equal(validateReply({ status: 501, body: { ok: false, code: 'MEMENTO_UNAVAILABLE' } }), true);
+  assert.equal(validateReply({ status: 500, body: { ok: false, code: 'WRITE_FAILED' } }), true);
+  assert.equal(validateReply({ status: 500, body: { ok: false, code: 'WRITE_FAILED', detail: 'x' } }), false);
+  assert.equal(validateReply({ status: 500, body: { ok: false, code: 'WRITE_FAILED', rev: 3 } }), false);
+  assert.equal(validateReply({ status: 500, body: { ok: true, code: 'WRITE_FAILED' } }), false);
+  assert.equal(validateReply({ status: 500, body: { ok: false, code: 'STALE' } }), false);
+  assert.equal(validateReply({ status: 409, body: { ok: false, code: 'WRITE_FAILED' } }), false);
+  assert.equal(validateReply({ status: 500, body: { ok: false, code: 'UNKNOWN' } }), false);
+  assert.equal(validateReply({ status: 500, body: { ok: false } }), false);
   assert.equal(validateReply({ status: 200, body: { ok: true, rev: 3, discord: 'sent' } }), false);
   assert.equal(validateReply({ status: 400, body: { ok: false, code: 'STALE' } }), false);
 });

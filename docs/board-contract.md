@@ -78,8 +78,18 @@ The body has exactly these keys:
 | 400 | `{ok: false, code: 'BAD_STATUS'}` | status isn't one of the 7 keys |
 | 501 | `{ok: false, code: 'MEMENTO_UNAVAILABLE'}` | no API object published |
 | 501 | `{ok: false, code: 'API_VERSION_UNSUPPORTED'}` | published `version` isn't 1 |
+| 500 | `{ok: false, code: 'WRITE_FAILED'}` | a non-contention storage/write/commit failure; not success, not pending, no automatic retry |
+
+`WRITE_FAILED` is an additive v1 reply. It is not automatically understood by
+older strict consumers (including the current board bridge): TASK15 must
+propagate and handle it before board integration. The reply carries no raw
+stderr, path or internal failure detail.
 
 Checks run in that order: body shape, status, card lookup, rev. A pick on a `conflict` or `invalid` card is a normal write and resolves it.
+
+A handled `requestId` keeps its first reply, including a `WRITE_FAILED` or `BUSY`
+failure; a repeated request never retries the write and never becomes success
+because a lock was later released.
 
 ## Checker: src/contract.mjs
 

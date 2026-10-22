@@ -154,9 +154,9 @@ export function openStore(repoPath, options = {}) {
     }
   }
 
-  async function withWrite(run) {
+  async function withWrite(run, waitMs = lockWaitMs) {
     const lock = await acquire(root, 'write', {
-      waitMs: lockWaitMs,
+      waitMs,
       scheduler: { sleep },
       now,
       ...(staleMs === undefined ? {} : { staleMs }),
@@ -387,7 +387,7 @@ export function openStore(repoPath, options = {}) {
     });
   }
 
-  async function readSyncState() {
+  async function readSyncStateBytes() {
     const bytes = await readMaybe(syncFile);
     if (bytes === null) return { ok: false, code: 'MISSING' };
     let state;
@@ -398,7 +398,87 @@ export function openStore(repoPath, options = {}) {
     }
     const reason = syncStateReason(state);
     if (reason) return { ok: false, code: 'UNREADABLE', reason };
-    return { ok: true, state };
+    return { ok: true, state, bytes };
+  }
+
+  async function readSyncState() {
+    const read = await readSyncStateBytes();
+    return read.ok ? { ok: true, state: read.state } : read;
+  }
+
+  /**
+   * Lock-held read/mutate/atomic-write/commit of sync/state.json. The write
+   * lock is held across the read, the mutation, the rename and the commit, so
+   * concurrent writers (board API, sync runner) serialize instead of replacing
+   * each other's whole-document snapshot.
+   *
+   * Returns {ok:true, state, changed, committed, commit} or
+   * {ok:false, code} with code BUSY | MISSING | UNREADABLE | BAD_STATE |
+   * INDEX_LOCK | WRITE_FAILED | COMMIT_FAILED, plus the usual commit/rollback
+   * fields on INDEX_LOCK and COMMIT_FAILED.
+   */
+  async function transactSyncState(mutate, options = {}) {
+    if (typeof mutate !== 'function') return { ok: false, code: 'BAD_REQUEST', reason: 'mutate' };
+    const waitMs = Number.isFinite(options.waitMs) ? Math.max(0, options.waitMs) : lockWaitMs;
+    return withWrite(async () => {
+      let read;
+      try {
+        read = await readSyncStateBytes();
+      } catch (error) {
+        return { ok: false, code: 'READ_FAILED', error: String(error?.code ?? error?.message ?? error) };
+      }
+      if (!read.ok) return read;
+      const existing = read.bytes;
+      const next = structuredClone(read.state);
+      let mutated;
+      try {
+        const value = mutate(next);
+        // Only an undefined return keeps the mutated clone; an explicit null or
+        // any other value is the replacement that must pass validation.
+        mutated = value === undefined ? next : value;
+      } catch (error) {
+        return { ok: false, code: 'BAD_STATE', reason: 'mutate' };
+      }
+      const reason = syncStateReason(mutated);
+      if (reason) return { ok: false, code: 'BAD_STATE', reason };
+      let bytes;
+      try {
+        bytes = Buffer.from(`${JSON.stringify(mutated, null, 2)}\n`, 'utf8');
+      } catch {
+        return { ok: false, code: 'BAD_STATE', reason: 'serialize' };
+      }
+      if (existing.equals(bytes)) {
+        const dirty = await pathDirty(root, 'sync/state.json');
+        if (!dirty) return { ok: true, state: mutated, changed: false, committed: false };
+        if (isIndexLocked(root)) {
+          return indexLocked({ changed: false, committed: false, dirty: true, state: mutated });
+        }
+        const commit = await commitPaths(root, ['sync/state.json'], options.message ?? 'memento: sync state\n');
+        if (!commit.ok) return dirtyCommitFailure(commit, mutated);
+        if (commit.changed === false) {
+          return dirtyCommitFailure({ ...commit, ok: false, code: 'COMMIT_FAILED' }, mutated);
+        }
+        return { ok: true, state: mutated, changed: false, committed: true, commit };
+      }
+      if (isIndexLocked(root)) return indexLocked({ changed: false, committed: false, state: mutated });
+      try {
+        await writeAtomic('sync', syncFile, bytes);
+      } catch (error) {
+        return { ok: false, code: 'WRITE_FAILED', error: String(error?.code ?? error?.message ?? error) };
+      }
+      const commit = await commitPaths(root, ['sync/state.json'], options.message ?? 'memento: sync state\n');
+      if (!commit.ok) {
+        const rollback = await rollbackWrite('sync/state.json', existing);
+        return commitFailure(commit, rollback, { state: mutated, changed: false });
+      }
+      return {
+        ok: true,
+        state: mutated,
+        changed: true,
+        committed: commit.changed !== false,
+        commit,
+      };
+    }, waitMs);
   }
 
   async function writeSyncState(state) {
@@ -441,6 +521,7 @@ export function openStore(repoPath, options = {}) {
     update,
     readSyncState,
     writeSyncState,
+    transactSyncState,
     push: (pushOptions) => gitPush(root, pushOptions),
     unpushedCount: (countOptions) => gitUnpushedCount(root, countOptions),
   };
