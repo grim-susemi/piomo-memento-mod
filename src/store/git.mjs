@@ -3,10 +3,49 @@ import { existsSync } from 'node:fs';
 import { mkdir, unlink, writeFile } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 import { dirname, join } from 'node:path';
-import { promisify } from 'node:util';
 
-const execFileAsync = promisify(execFile);
 const MAX_BUFFER = 16 * 1024 * 1024;
+
+let childObserver = null;
+
+/**
+ * Optional QA hook: receives spawn and exit events for every git child this
+ * module starts. Production never sets it; observer failures are ignored so a
+ * diagnostic can never change git behavior. Events are
+ * { event: 'spawn', pid, at } and { event: 'exit', pid, code, signal, at }.
+ */
+export function observeChildProcesses(observer) {
+  childObserver = typeof observer === 'function' ? observer : null;
+}
+
+function execFileAsync(file, args, options) {
+  return new Promise((resolve, reject) => {
+    const child = execFile(file, args, options, (error, stdout, stderr) => {
+      if (error) {
+        if (error.stdout === undefined) error.stdout = stdout;
+        if (error.stderr === undefined) error.stderr = stderr;
+        reject(error);
+        return;
+      }
+      resolve({ stdout, stderr });
+    });
+    if (childObserver && Number.isInteger(child.pid) && child.pid > 0) {
+      const pid = child.pid;
+      try {
+        childObserver({ event: 'spawn', pid, at: Date.now() });
+      } catch {
+        // diagnostics only; never break a git call
+      }
+      child.once('exit', (code, signal) => {
+        try {
+          childObserver({ event: 'exit', pid, code, signal, at: Date.now() });
+        } catch {
+          // diagnostics only; never break a git call
+        }
+      });
+    }
+  });
+}
 
 export const GIT_CONFIG = Object.freeze([
   '-c', 'user.name=memento',

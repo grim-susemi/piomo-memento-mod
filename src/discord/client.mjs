@@ -34,6 +34,7 @@
 import { readFileSync } from 'node:fs';
 import { Agent as HttpAgent, request as httpRequest } from 'node:http';
 import { Agent as HttpsAgent, request as httpsRequest } from 'node:https';
+import { setTimeout as delay } from 'node:timers/promises';
 
 export const DEFAULT_BASE_URL = 'https://discord.com/api/v10';
 export const DEFAULT_TIMEOUT_MS = 10_000;
@@ -61,21 +62,7 @@ function redactHeaders(headers, token) {
 }
 
 function sleepReal(ms, { signal } = {}) {
-  return new Promise((resolve, reject) => {
-    if (signal?.aborted) {
-      reject(new DOMException('aborted', 'AbortError'));
-      return;
-    }
-    const timer = setTimeout(() => {
-      signal?.removeEventListener('abort', onAbort);
-      resolve();
-    }, Math.max(0, ms));
-    function onAbort() {
-      clearTimeout(timer);
-      reject(new DOMException('aborted', 'AbortError'));
-    }
-    signal?.addEventListener('abort', onAbort, { once: true });
-  });
+  return delay(Math.max(0, ms), undefined, { signal });
 }
 
 function joinUrl(baseUrl, path) {

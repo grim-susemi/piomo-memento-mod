@@ -8,7 +8,7 @@ const cases = [
     'discord-token',
     'MTA5NzU4NDY4Mjc1MzYzNTM1OA.Gk3dQ2.9c0zAbCdEfGhIjKlMnOpQrStUvW',
   ],
-  ['openai-key', 'sk-proj-AbCdEfGhIjKlMnOpQrStUvWx'],
+  ['sk-key', 'sk-proj-AbCdEfGhIjKlMnOpQrStUvWx'],
   ['github-token', 'ghp_1234567890abcdefghijklmnopqrstuvwxyz'],
   ['aws-access-key', 'AKIA1234567890ABCDEF'],
   ['private-key', '-----BEGIN RSA PRIVATE KEY-----\nMIIEexample'],

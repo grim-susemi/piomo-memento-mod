@@ -28,6 +28,7 @@
  * Paths are matched without the /api/v10 prefix. The fake never logs the token.
  */
 import { createServer } from 'node:http';
+import { setTimeout as delay } from 'node:timers/promises';
 
 const API_PREFIX = '/api/v10';
 const DISCORD_EPOCH = 1420070400000n;
@@ -568,34 +569,28 @@ export async function startFakeDiscord(options = {}) {
 
   async function waitForNoOpenSockets(timeoutMs = 2_000) {
     if (openSockets.size === 0) return true;
-    return new Promise((resolve, reject) => {
-      const sockets = [...openSockets];
-      let remaining = sockets.length;
-      let settled = false;
-      const timer = setTimeout(() => {
-        cleanup();
-        reject(new Error(`sockets still open: ${openSockets.size}`));
-      }, timeoutMs);
-      function cleanup() {
-        if (settled) return;
-        settled = true;
-        clearTimeout(timer);
-        for (const socket of sockets) socket.off('close', onClose);
-      }
-      function onClose() {
-        if (settled) return;
-        remaining -= 1;
-        if (remaining <= 0 || openSockets.size === 0) {
-          cleanup();
-          resolve(true);
-        }
-      }
-      for (const socket of sockets) socket.once('close', onClose);
-      if (openSockets.size === 0) {
-        cleanup();
-        resolve(true);
-      }
+    const sockets = [...openSockets];
+    const controller = new AbortController();
+    let remaining = sockets.length;
+    let resolveClosed;
+    const closed = new Promise((resolve) => {
+      resolveClosed = resolve;
     });
+    const onClose = () => {
+      remaining -= 1;
+      if (remaining <= 0 || openSockets.size === 0) resolveClosed(true);
+    };
+    for (const socket of sockets) socket.once('close', onClose);
+    if (openSockets.size === 0) resolveClosed(true);
+    try {
+      const timeout = delay(timeoutMs, undefined, { signal: controller.signal }).then(() => {
+        throw new Error(`sockets still open: ${openSockets.size}`);
+      });
+      return await Promise.race([closed, timeout]);
+    } finally {
+      controller.abort();
+      for (const socket of sockets) socket.off('close', onClose);
+    }
   }
 
   let closing = false;

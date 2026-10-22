@@ -104,6 +104,7 @@ export default function extension(pi, factoryOptions = {}) {
   let config = null;
   let intake = null;
   let syncController = null;
+  let lastSyncPromise = null;
   let syncCtx = null;
   let activeStartKey = null;
   let boardApi = null;
@@ -158,6 +159,7 @@ export default function extension(pi, factoryOptions = {}) {
       return { ok: false, reason: 'error' };
     });
     syncController = { controller, promise };
+    lastSyncPromise = promise;
     activeStartKey = key;
     promise
       .finally(() => {
@@ -180,6 +182,11 @@ export default function extension(pi, factoryOptions = {}) {
     get active() { return identity === 'lead'; },
     get config() { return config; },
     getSessionStatus() { return identity; },
+    // Narrow lifecycle observability: join the actual in-flight sync promise,
+    // or the last one when it already settled. This never starts sync work.
+    whenSyncIdle() {
+      return syncController?.promise ?? lastSyncPromise ?? Promise.resolve(null);
+    },
     reloadConfig(agentDir) {
       config = loadConfig({ agentDir });
       return config;

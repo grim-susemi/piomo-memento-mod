@@ -183,7 +183,7 @@ test('Test_WikiImport skips a secret row and reports the pattern only', async ()
   assert.equal(result.created.length, 0);
   assert.equal(result.skipped.length, 1);
   assert.equal(result.skipped[0].reason, 'secret');
-  assert.equal(result.skipped[0].pattern, 'openai-key');
+  assert.equal(result.skipped[0].pattern, 'sk-key');
   const listed = await store.list();
   assert.equal(listed.cards.length, 0);
 });

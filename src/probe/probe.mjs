@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { mkdir } from 'node:fs/promises';
+import { setTimeout as delay } from 'node:timers/promises';
 import { normalizeIntake } from '../card/codec.mjs';
 import { GUILD_NAME } from './constants.mjs';
 import { writePreparedOwnerAction } from './instructions.mjs';
@@ -10,9 +11,7 @@ import { cleanupThread, runSetup } from './probe-setup.mjs';
 import { runOwnerPhase } from './probe-owner.mjs';
 
 function realSleep(ms) {
-  return new Promise(resolve => {
-    setTimeout(resolve, Math.max(0, Number(ms) || 0));
-  });
+  return delay(Math.max(0, Number(ms) || 0));
 }
 
 async function completePreparation(context, setupResult) {

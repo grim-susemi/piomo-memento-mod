@@ -1,6 +1,7 @@
 #!/usr/bin/env node
-import { existsSync, lstatSync } from 'node:fs';
-import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
+import { appendFileSync, existsSync, lstatSync } from 'node:fs';
+import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { parseArgs } from 'node:util';
@@ -16,6 +17,9 @@ const STORE_INIT = new URL('../src/store/init.mjs', import.meta.url);
 const STORE = new URL('../src/store/store.mjs', import.meta.url);
 const INTAKE_SESSION = new URL('../src/intake/session.mjs', import.meta.url);
 const RECEIPTS = new URL('../src/receipts.mjs', import.meta.url);
+const SYNC = new URL('../src/sync/run.mjs', import.meta.url);
+const STORE_GIT = new URL('../src/store/git.mjs', import.meta.url);
+const ROUNDTRIP = new URL('../src/doctor/roundtrip.mjs', import.meta.url);
 const OUTPUT_FILES = [
   'wiki-hash-before.json',
   'wiki-hash-after.json',
@@ -27,8 +31,15 @@ const OUTPUT_FILES = [
 const USAGE = `Usage: memento <command> [options]
 
 Commands:
-  doctor [--parse <file>] [--discord]  Print the config state, parse one card file,
-                                       or check the Discord bot with GET /users/@me.
+  doctor [--parse <file>] [--discord] [--roundtrip --work <dir> --input <file>]
+                                       Print the config state, parse one card file,
+                                       check the Discord bot, or prove the UTF-8
+                                       card round trip through a real write, commit,
+                                       clone, API read and fake Discord post.
+  sync [--repo <dir>] [--discord-base <url>] [--pid-log <file>]
+                                       Run one session-start sync. Without --repo the
+                                       configured repo is used; the loopback fake URL
+                                       and child PID log are QA-only options.
   wiki-scan --root <dir> --out <dir>   Scan the old wiki read-only: hash every file,
                                        list at most 50 ranked candidates and the
                                        broken-Korean exclusions outside the wiki.
@@ -53,6 +64,12 @@ Commands:
 Options:
   --parse <file>            Parse a card file with src/card/codec.mjs.
   --discord                 Check the Discord bot token (reads the configured tokenFile).
+  --roundtrip               Doctor: run the UTF-8 card round trip.
+  --work <dir>              Doctor roundtrip: work directory for the temporary repo.
+  --input <file>            Doctor roundtrip: UTF-8 input file (never passed as an argument).
+  --repo <dir>              sync: data repository to use instead of the configured one.
+  --discord-base <url>      sync: Discord API base URL (loopback fake for QA).
+  --pid-log <file>          sync: write each child spawn/exit event as JSONL.
   --base-url <url>          Discord API base URL for --discord (default https://discord.com/api/v10).
   --root <dir>              Wiki root for wiki-scan (read-only).
   --out <dir>               Output directory for wiki-scan or probe; wiki-scan refuses an
@@ -70,7 +87,7 @@ Options:
   --repo-path <dir>         Data repo path written to config.json when probe completes.
   --audit-reads <n>         Probe audit reads at the owner boundary (default 3, max 10).
   --audit-interval-ms <n>   Delay between those reads (default 20000).
-  --token-file <file>       Token file for leak-scan.
+  --token-file <file>       Token file for leak-scan or sync.
   --paths <path>            leak-scan path (repeatable).
   --git <repo>              leak-scan git repository (repeatable).
   --also <file>             leak-scan extra strings file, one string per line.
@@ -152,6 +169,31 @@ async function printDiscordCheck(baseUrl) {
   }
   console.log(`discord: unreachable (${result.error ?? result.status ?? 'unknown'})`);
   return 1;
+}
+
+async function runRoundtripCommand(values) {
+  if (values.work === undefined || values.work.length === 0
+    || values.input === undefined || values.input.length === 0) {
+    console.error('doctor --roundtrip needs --work <dir> --input <utf8 file>');
+    return 2;
+  }
+  if (!existsSync(ROUNDTRIP)) {
+    console.log('roundtrip: unavailable (src/doctor/roundtrip.mjs is not installed yet)');
+    return 3;
+  }
+  const { runRoundtrip } = await import(pathToFileURL(fileURLToPath(ROUNDTRIP)).href);
+  let result;
+  try {
+    result = await runRoundtrip({ workDir: values.work, inputFile: values.input });
+  } catch (error) {
+    console.error(`roundtrip failed: ${error?.code ?? error?.message ?? 'unknown'}`);
+    return 1;
+  }
+  if (!result.ok) {
+    console.log(`roundtrip: failed (${result.error ?? 'mismatch'}${result.status ? ` ${result.status}` : ''})`);
+  }
+  console.log(`bytesEqual ${result.bytesEqual === true}, replacementChars ${result.replacementChars ?? -1}`);
+  return result.ok ? 0 : 1;
 }
 
 function markdownCell(value) {
@@ -572,6 +614,108 @@ async function runWikiImportCommand(values) {
   return result.failed.length === 0 && result.hashesEqual ? 0 : 1;
 }
 
+async function runSyncCommand(values) {
+  if (values.repo !== undefined && values.repo.length === 0) {
+    console.error('sync: --repo needs a directory');
+    return 2;
+  }
+  if (values['discord-base'] !== undefined && values['discord-base'].length === 0) {
+    console.error('sync: --discord-base needs a URL');
+    return 2;
+  }
+  if (values['pid-log'] !== undefined && values['pid-log'].length === 0) {
+    console.error('sync: --pid-log needs a file');
+    return 2;
+  }
+  if (!existsSync(SYNC)) {
+    console.log('sync: unavailable (src/sync/run.mjs is not installed yet)');
+    return 3;
+  }
+  const repoArg = values.repo ? resolve(values.repo) : null;
+  const discordBase = values['discord-base'];
+  const pidLog = values['pid-log'] ? resolve(values['pid-log']) : null;
+  let config;
+  let tempRoot = null;
+  let stopObserver = null;
+  let pidError = null;
+  try {
+    if (repoArg) {
+      if (discordBase !== undefined
+        && !/^http:\/\/(?:127\.0\.0\.1|localhost):\d+\/api\/v10$/.test(discordBase)
+        && !values['token-file']) {
+        console.error('sync: --token-file is required when --discord-base is not a loopback fake');
+        return 2;
+      }
+      tempRoot = await mkdtemp(join(tmpdir(), 'memento-sync-cli-'));
+      const tokenFile = values['token-file']
+        ? resolve(values['token-file'])
+        : join(tempRoot, 'discord-token');
+      if (!values['token-file']) {
+        await writeFile(tokenFile, 'synthetic-discord-token\n', 'utf8');
+      }
+      const agentDir = values['agent-dir'] ? resolve(values['agent-dir']) : join(tempRoot, 'agent');
+      config = {
+        state: 'configured',
+        reason: '',
+        agentDir,
+        configPath: join(agentDir, 'memento', 'config.json'),
+        repoPath: repoArg,
+        tokenFile,
+        remote: null,
+      };
+    } else {
+      config = loadConfig();
+      if (config.state !== 'configured') {
+        console.log(`memento: ${config.state} (${config.reason})`);
+        return 2;
+      }
+    }
+    if (pidLog) {
+      await mkdir(dirname(pidLog), { recursive: true });
+      await writeFile(pidLog, '', 'utf8');
+      const { observeChildProcesses } = await import(pathToFileURL(fileURLToPath(STORE_GIT)).href);
+      observeChildProcesses((event) => {
+        if (!event || typeof event !== 'object') return;
+        try {
+          appendFileSync(pidLog, `${JSON.stringify(event)}\n`, 'utf8');
+        } catch (error) {
+          pidError = String(error?.code ?? error?.message ?? error);
+        }
+      });
+      stopObserver = () => observeChildProcesses(null);
+    }
+    const { runSync } = await import(pathToFileURL(fileURLToPath(SYNC)).href);
+    const { createDiscordClient } = await import(pathToFileURL(fileURLToPath(DISCORD_CLIENT)).href);
+    const { createReceipts } = await import(pathToFileURL(fileURLToPath(RECEIPTS)).href);
+    const client = createDiscordClient({
+      tokenFile: config.tokenFile,
+      ...(discordBase ? { baseUrl: discordBase } : {}),
+    });
+    const result = await runSync({
+      reason: 'command',
+      config,
+      client,
+      receipts: createReceipts({ agentDir: config.agentDir }),
+    });
+    if (pidError) {
+      console.error(`sync: pid-log write failed (${pidError})`);
+      return 1;
+    }
+    if (result.ok) {
+      console.log(`sync: ok runs ${result.runs ?? 0} discord ${result.discord ?? 'unknown'} push ${result.push ?? 'unknown'}`);
+      return 0;
+    }
+    console.log(`sync: ${result.skipped ?? result.reason ?? 'failed'} runs ${result.runs ?? 0}`);
+    return 1;
+  } catch (error) {
+    console.error(`sync failed: ${error?.code ?? error?.message ?? 'unknown'}`);
+    return 1;
+  } finally {
+    stopObserver?.();
+    if (tempRoot) await rm(tempRoot, { recursive: true, force: true }).catch(() => {});
+  }
+}
+
 async function main(argv) {
   let values;
   let positionals;
@@ -582,6 +726,12 @@ async function main(argv) {
         help: { type: 'boolean' },
         parse: { type: 'string' },
         discord: { type: 'boolean' },
+        roundtrip: { type: 'boolean' },
+        work: { type: 'string' },
+        input: { type: 'string' },
+        repo: { type: 'string' },
+        'discord-base': { type: 'string' },
+        'pid-log': { type: 'string' },
         'base-url': { type: 'string' },
         root: { type: 'string' },
         out: { type: 'string' },
@@ -647,11 +797,37 @@ async function main(argv) {
     console.error('--prepare-only needs probe');
     return 2;
   }
+  if (values.roundtrip && command !== 'doctor') {
+    console.error('--roundtrip needs doctor');
+    return 2;
+  }
+  if ((values.work !== undefined || values.input !== undefined)
+    && !(command === 'doctor' && values.roundtrip)) {
+    console.error('--work and --input need doctor --roundtrip');
+    return 2;
+  }
+  if (values.repo !== undefined && command !== 'sync') {
+    console.error('--repo needs sync');
+    return 2;
+  }
+  if (values['discord-base'] !== undefined && command !== 'sync') {
+    console.error('--discord-base needs sync');
+    return 2;
+  }
+  if (values['pid-log'] !== undefined && command !== 'sync') {
+    console.error('--pid-log needs sync');
+    return 2;
+  }
+  if (values['token-file'] !== undefined && command !== 'leak-scan' && command !== 'sync') {
+    console.error('--token-file needs leak-scan or sync');
+    return 2;
+  }
   if (command === 'init') return runInitCommand(values, positionals);
   if (command === 'capture-from-session') return runCaptureFromSessionCommand(values);
   if (command === 'wiki-import') return runWikiImportCommand(values);
   if (command === 'probe') return runProbeCommand(values);
   if (command === 'leak-scan') return runLeakScanCommand(values);
+  if (command === 'sync') return runSyncCommand(values);
   if (command === 'wiki-scan') {
     if (values.root === undefined || values.root.length === 0) {
       console.error('wiki-scan needs --root <dir>');
@@ -664,6 +840,13 @@ async function main(argv) {
     return runWikiScan(values.root, values.out);
   }
   if (command === 'doctor') {
+    if (values.roundtrip) {
+      if (values.parse !== undefined || values.discord) {
+        console.error('--roundtrip cannot be combined with --parse or --discord');
+        return 2;
+      }
+      return runRoundtripCommand(values);
+    }
     if (values.parse !== undefined) {
       if (values.parse.length === 0) {
         console.error('--parse needs a file path');

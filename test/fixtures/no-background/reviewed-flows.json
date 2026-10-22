@@ -1,0 +1,2030 @@
+{
+  "schema": "memento.task13.reviewed-flows.v1",
+  "census": [
+    {
+      "token": "setTimeout",
+      "match": "word"
+    },
+    {
+      "token": "clearTimeout",
+      "match": "word"
+    },
+    {
+      "token": "setInterval",
+      "match": "word"
+    },
+    {
+      "token": "setImmediate",
+      "match": "word"
+    },
+    {
+      "token": "sleepReal",
+      "match": "word"
+    },
+    {
+      "token": "realSleep",
+      "match": "word"
+    },
+    {
+      "token": "sleep",
+      "match": "word"
+    },
+    {
+      "token": "delay",
+      "match": "word"
+    },
+    {
+      "token": "createDeadline",
+      "match": "word"
+    },
+    {
+      "token": "dispose",
+      "match": "word"
+    },
+    {
+      "token": "URL",
+      "match": "word"
+    },
+    {
+      "token": "fetch",
+      "match": "word"
+    },
+    {
+      "token": "httpsRequest",
+      "match": "word"
+    },
+    {
+      "token": "httpRequest",
+      "match": "word"
+    },
+    {
+      "token": "HttpsAgent",
+      "match": "word"
+    },
+    {
+      "token": "HttpAgent",
+      "match": "word"
+    },
+    {
+      "token": "requestOnce",
+      "match": "word"
+    },
+    {
+      "token": "joinUrl",
+      "match": "word"
+    },
+    {
+      "token": "querySuffix",
+      "match": "word"
+    },
+    {
+      "token": "baseUrl",
+      "match": "word"
+    },
+    {
+      "token": "DEFAULT_BASE_URL",
+      "match": "word"
+    },
+    {
+      "token": "globalThis",
+      "match": "word"
+    },
+    {
+      "token": "prototype",
+      "match": "word"
+    },
+    {
+      "token": ".constructor",
+      "match": "literal"
+    },
+    {
+      "token": "defineProperty",
+      "match": "word"
+    },
+    {
+      "token": "setPrototypeOf",
+      "match": "word"
+    },
+    {
+      "token": "Reflect",
+      "match": "word"
+    },
+    {
+      "token": "Proxy",
+      "match": "word"
+    },
+    {
+      "token": "eval",
+      "match": "word"
+    },
+    {
+      "token": "Function",
+      "match": "word"
+    },
+    {
+      "token": "with",
+      "match": "word"
+    },
+    {
+      "token": "createRequire",
+      "match": "word"
+    },
+    {
+      "token": "import(",
+      "match": "import-call",
+      "lineOnly": true
+    }
+  ],
+  "specifiers": [
+    "node:http",
+    "node:https",
+    "node:net",
+    "node:tls",
+    "node:dgram",
+    "node:http2",
+    "node:vm",
+    "node:module",
+    "node:timers",
+    "node:timers/promises"
+  ],
+  "globalReadTokens": [
+    "Promise",
+    "AbortController",
+    "AbortSignal"
+  ],
+  "entries": [
+    {
+      "id": "fn.bin.printDiscordCheck",
+      "unit": "function",
+      "kind": "request-consumer",
+      "file": "bin/memento.mjs",
+      "path": "printDiscordCheck",
+      "sha256": "81f906010b6f24c06a6a1f35ea0b239954f02c27c392d56196f5ae4794695b97",
+      "anchors": [
+        {
+          "token": "baseUrl",
+          "count": 3
+        },
+        {
+          "token": "import(",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "fn.api.publish",
+      "unit": "function",
+      "kind": "global-alias",
+      "file": "src/api.mjs",
+      "path": "createBoardApi>publish",
+      "sha256": "413fda3f76b868635482f83798479c7b3fafd0c28b45b06bd90918ef9176a8c6",
+      "anchors": [
+        {
+          "token": "globalThis",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "fn.api.unpublish",
+      "unit": "function",
+      "kind": "global-alias",
+      "file": "src/api.mjs",
+      "path": "createBoardApi>unpublish",
+      "sha256": "8c8e6bc81fd6393ae36fea2cf3f1e210b8814b7278abd610fc0ac1ba51cf4831",
+      "anchors": [
+        {
+          "token": "globalThis",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "fn.api.raceDeadline",
+      "unit": "function",
+      "kind": "raw-timer",
+      "file": "src/api.mjs",
+      "path": "raceDeadline",
+      "sha256": "89a922728e7127a638ad749199a0a40db34ffc6f918c4d362b4dcb58dcebf0f7",
+      "anchors": [
+        {
+          "token": "setTimeout",
+          "count": 1
+        },
+        {
+          "token": "clearTimeout",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "fn.client.call",
+      "unit": "function",
+      "kind": "request-consumer",
+      "file": "src/discord/client.mjs",
+      "path": "createDiscordClient>call",
+      "sha256": "2388e9184716ef1bc54b3812126b0aa7062cc66a3364356b2132b95cd304c04c",
+      "anchors": [
+        {
+          "token": "sleep",
+          "count": 1
+        },
+        {
+          "token": "requestOnce",
+          "count": 1
+        },
+        {
+          "token": "joinUrl",
+          "count": 1
+        },
+        {
+          "token": "querySuffix",
+          "count": 1
+        },
+        {
+          "token": "baseUrl",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "fn.client.reserveSendSlot",
+      "unit": "function",
+      "kind": "delay-consumer",
+      "file": "src/discord/client.mjs",
+      "path": "createDiscordClient>reserveSendSlot",
+      "sha256": "89bc79c5994a25793baca33c017cadb1994ffcecc1a591e23a18c32fa7a98ecc",
+      "anchors": [
+        {
+          "token": "sleep",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "id": "fn.client.joinUrl",
+      "unit": "function",
+      "kind": "url-helper",
+      "file": "src/discord/client.mjs",
+      "path": "joinUrl",
+      "sha256": "264d1b48d35d719b89d1952d9fda39e76dbb7652f360ccc4e9408d818009592f",
+      "anchors": [
+        {
+          "token": "joinUrl",
+          "count": 1
+        },
+        {
+          "token": "baseUrl",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "fn.client.querySuffix",
+      "unit": "function",
+      "kind": "url-helper",
+      "file": "src/discord/client.mjs",
+      "path": "querySuffix",
+      "sha256": "f15a6a18f52ec0411479340d1a5149ea92dd4fa67dc2dd460bbc652a7d965bd6",
+      "anchors": [
+        {
+          "token": "querySuffix",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "fn.client.requestOnce",
+      "unit": "function",
+      "kind": "request-sink",
+      "file": "src/discord/client.mjs",
+      "path": "requestOnce",
+      "sha256": "2225fed1e84cf3d749b9f406ecbc42baf54f83d11e653ea39256000854c236ad",
+      "anchors": [
+        {
+          "token": "delay",
+          "count": 3
+        },
+        {
+          "token": "URL",
+          "count": 1
+        },
+        {
+          "token": "httpsRequest",
+          "count": 1
+        },
+        {
+          "token": "httpRequest",
+          "count": 1
+        },
+        {
+          "token": "HttpsAgent",
+          "count": 1
+        },
+        {
+          "token": "HttpAgent",
+          "count": 1
+        },
+        {
+          "token": "requestOnce",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "fn.client.sleepReal",
+      "unit": "function",
+      "kind": "delay-wrapper",
+      "file": "src/discord/client.mjs",
+      "path": "sleepReal",
+      "sha256": "89c9d4eb87442ec7e80bb63098fc8f6c03c5ae7f42ee65264b7623bc89563b02",
+      "anchors": [
+        {
+          "token": "sleepReal",
+          "count": 1
+        },
+        {
+          "token": "delay",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "fn.fake.sleep",
+      "unit": "function",
+      "kind": "delay-wrapper",
+      "file": "src/discord/fake-server.mjs",
+      "path": "createVirtualClock>sleep",
+      "sha256": "3e7d659a002b7e850a10bf201fba6f7472228a4cf273add3c62771005d96269e",
+      "anchors": [
+        {
+          "token": "sleep",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "fn.fake.waitForNoOpenSockets",
+      "unit": "function",
+      "kind": "promise-race",
+      "file": "src/discord/fake-server.mjs",
+      "path": "startFakeDiscord>waitForNoOpenSockets",
+      "sha256": "62d36c9db6e461d4f5cabbca8f88e1243254758ac96ab6779c4de9a9153038a6",
+      "anchors": [
+        {
+          "token": "delay",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "fn.audit.findAuditBounded",
+      "unit": "function",
+      "kind": "delay-consumer",
+      "file": "src/probe/audit.mjs",
+      "path": "findAuditBounded",
+      "sha256": "c894e4d0cfda9ccfe8f56d72abdc911e98d9943bbbd74dc5ba244d4a77106c6c",
+      "anchors": [
+        {
+          "token": "sleep",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "id": "fn.owner.cleanupOwner",
+      "unit": "function",
+      "kind": "delay-consumer",
+      "file": "src/probe/probe-owner.mjs",
+      "path": "cleanupOwner",
+      "sha256": "24ac5af29ff23e117bae78a02986a9d74f79af2a42609d7c9fdbfa0724db11a0",
+      "anchors": [
+        {
+          "token": "sleep",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "id": "fn.setup.cleanupProbe",
+      "unit": "function",
+      "kind": "delay-consumer",
+      "file": "src/probe/probe-setup.mjs",
+      "path": "cleanupProbe",
+      "sha256": "59d99404fb52432f7c440521a1acacee5b17c9f890a6432af4c64f0f7e9ecf7a",
+      "anchors": [
+        {
+          "token": "sleep",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "id": "fn.setup.cleanupThread",
+      "unit": "function",
+      "kind": "delay-consumer",
+      "file": "src/probe/probe-setup.mjs",
+      "path": "cleanupThread",
+      "sha256": "06b3a933ea6fdc07ddd0c36823a8a07aa9b0b63ff1bcb06bf5ca5ef9784eac01",
+      "anchors": [
+        {
+          "token": "sleep",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "id": "fn.probe.completePreparation",
+      "unit": "function",
+      "kind": "delay-consumer",
+      "file": "src/probe/probe.mjs",
+      "path": "completePreparation",
+      "sha256": "0faac7af05df6b00305b1e2331a6e064d2b82bf7f49849f97ec651a9e7269964",
+      "anchors": [
+        {
+          "token": "sleep",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "id": "fn.probe.realSleep",
+      "unit": "function",
+      "kind": "delay-wrapper",
+      "file": "src/probe/probe.mjs",
+      "path": "realSleep",
+      "sha256": "6537ff654c481c9c324865a5682e79eb17316b43da7a1c286e593c9b7f1d8662",
+      "anchors": [
+        {
+          "token": "realSleep",
+          "count": 1
+        },
+        {
+          "token": "delay",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "fn.tokenMove.checkBotToken",
+      "unit": "function",
+      "kind": "request-sink",
+      "file": "src/probe/token-move.mjs",
+      "path": "checkBotToken",
+      "sha256": "871c935f3223eb07adfce414de95dd9ed38b2d63ced7ce5576380c1906c64931",
+      "anchors": [
+        {
+          "token": "URL",
+          "count": 1
+        },
+        {
+          "token": "httpsRequest",
+          "count": 1
+        },
+        {
+          "token": "httpRequest",
+          "count": 1
+        },
+        {
+          "token": "HttpsAgent",
+          "count": 1
+        },
+        {
+          "token": "HttpAgent",
+          "count": 1
+        },
+        {
+          "token": "baseUrl",
+          "count": 1
+        },
+        {
+          "token": "DEFAULT_BASE_URL",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "fn.tokenMove.moveToken",
+      "unit": "function",
+      "kind": "request-consumer",
+      "file": "src/probe/token-move.mjs",
+      "path": "moveToken",
+      "sha256": "a725d65bd9539aa13472d2a9dcb0e28b3edd2c2d30a5ddf05aa81a794c761c5d",
+      "anchors": [
+        {
+          "token": "baseUrl",
+          "count": 2
+        },
+        {
+          "token": "DEFAULT_BASE_URL",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "fn.store.readMaybe",
+      "unit": "function",
+      "kind": "delay-consumer",
+      "file": "src/store/store.mjs",
+      "path": "openStore>readMaybe",
+      "sha256": "7ad9a582dae617facb8c5ef4ce274780ded67d9e3e21eab4d19e072e6a199197",
+      "anchors": [
+        {
+          "token": "sleep",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "id": "fn.store.withWrite",
+      "unit": "function",
+      "kind": "delay-consumer",
+      "file": "src/store/store.mjs",
+      "path": "openStore>withWrite",
+      "sha256": "269bfdb3659ce0ac39bb5d9d4ecc86c7bc862da950b9c9db4b1aef64f4eae5d3",
+      "anchors": [
+        {
+          "token": "sleep",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "fn.store.writeAtomic",
+      "unit": "function",
+      "kind": "delay-consumer",
+      "file": "src/store/store.mjs",
+      "path": "openStore>writeAtomic",
+      "sha256": "56f23bd84fc65b46832645d5bb77b59d7ea36fe9c06f7307654973517d0871a1",
+      "anchors": [
+        {
+          "token": "sleep",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "fn.sync.createDeadline",
+      "unit": "function",
+      "kind": "disposer",
+      "file": "src/sync/run.mjs",
+      "path": "createDeadline",
+      "sha256": "eb4475c17d657b6d092010c713054f747d67a219b50818e8abe1880d72c49a66",
+      "anchors": [
+        {
+          "token": "setTimeout",
+          "count": 1
+        },
+        {
+          "token": "clearTimeout",
+          "count": 1
+        },
+        {
+          "token": "createDeadline",
+          "count": 1
+        },
+        {
+          "token": "dispose",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "fn.sync.dispose",
+      "unit": "function",
+      "kind": "disposer",
+      "file": "src/sync/run.mjs",
+      "path": "createDeadline>dispose",
+      "sha256": "6a825b68d779e9102b73a04461bfb40270bc9240ddbbb04dad63a4a8249712f1",
+      "anchors": [
+        {
+          "token": "clearTimeout",
+          "count": 1
+        },
+        {
+          "token": "dispose",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "line.bin.19",
+      "unit": "line",
+      "kind": "url-producer",
+      "file": "bin/memento.mjs",
+      "path": "<top>",
+      "raw": "const RECEIPTS = new URL('../src/receipts.mjs', import.meta.url);",
+      "occurrence": 1,
+      "sha256": "87acbc73ecd5980d4ad2280c2571063200b34a47eea4ed28b418c35684834963",
+      "anchors": [
+        {
+          "token": "URL",
+          "count": 1
+        }
+      ],
+      "controls": []
+    },
+    {
+      "id": "line.bin.251",
+      "unit": "line",
+      "kind": "dynamic-import",
+      "file": "bin/memento.mjs",
+      "path": "runWikiScan",
+      "raw": "  const { assertOutOutsideRoot, hashTree, manifestsEqual, scanWiki } = await import(",
+      "occurrence": 1,
+      "sha256": "8a4d5595188542a4e81aa34c867ba25207be19460f7fcf39eb3b87bfba214e6e",
+      "anchors": [
+        {
+          "token": "import(",
+          "count": 1
+        }
+      ],
+      "controls": []
+    },
+    {
+      "id": "line.bin.20",
+      "unit": "line",
+      "kind": "url-producer",
+      "file": "bin/memento.mjs",
+      "path": "<top>",
+      "raw": "const SYNC = new URL('../src/sync/run.mjs', import.meta.url);",
+      "occurrence": 1,
+      "sha256": "607a4bb8977639085cfebe8b8731fb62ede0371a0bc1947cf437993c75d79d63",
+      "anchors": [
+        {
+          "token": "URL",
+          "count": 1
+        }
+      ],
+      "controls": []
+    },
+    {
+      "id": "line.bin.21",
+      "unit": "line",
+      "kind": "url-producer",
+      "file": "bin/memento.mjs",
+      "path": "<top>",
+      "raw": "const STORE_GIT = new URL('../src/store/git.mjs', import.meta.url);",
+      "occurrence": 1,
+      "sha256": "074478dbd7c6bb7d21eb256fb9c257262dd7acb8d677612c6b73fb6e790a0ca7",
+      "anchors": [
+        {
+          "token": "URL",
+          "count": 1
+        }
+      ],
+      "controls": []
+    },
+    {
+      "id": "line.bin.22",
+      "unit": "line",
+      "kind": "url-producer",
+      "file": "bin/memento.mjs",
+      "path": "<top>",
+      "raw": "const ROUNDTRIP = new URL('../src/doctor/roundtrip.mjs', import.meta.url);",
+      "occurrence": 1,
+      "sha256": "270987d531c71963aac060dbf5323f5d296149ef71e6e698d3240530da9b2237",
+      "anchors": [
+        {
+          "token": "URL",
+          "count": 1
+        }
+      ],
+      "controls": []
+    },
+    {
+      "id": "line.bin.352",
+      "unit": "line",
+      "kind": "dynamic-import",
+      "file": "bin/memento.mjs",
+      "path": "runProbeCommand",
+      "raw": "  const { runProbe } = await import(pathToFileURL(fileURLToPath(PROBE)).href);",
+      "occurrence": 1,
+      "sha256": "42ec28d35e53dee741cecb784825f6a5cff01f51bb7dbfe6c03cead74cfce698",
+      "anchors": [
+        {
+          "token": "import(",
+          "count": 1
+        }
+      ],
+      "controls": []
+    },
+    {
+      "id": "line.bin.353",
+      "unit": "line",
+      "kind": "dynamic-import",
+      "file": "bin/memento.mjs",
+      "path": "runProbeCommand",
+      "raw": "  const { createDiscordClient } = await import(pathToFileURL(fileURLToPath(DISCORD_CLIENT)).href);",
+      "occurrence": 1,
+      "sha256": "b5d56b778a3cb10dfc066a0685e57a1c0749700e562e60ac0836b13bd2accfe0",
+      "anchors": [
+        {
+          "token": "import(",
+          "count": 1
+        }
+      ],
+      "controls": []
+    },
+    {
+      "id": "line.bin.356",
+      "unit": "line",
+      "kind": "request-line",
+      "file": "bin/memento.mjs",
+      "path": "runProbeCommand",
+      "raw": "    ...(values['base-url'] ? { baseUrl: values['base-url'] } : {}),",
+      "occurrence": 1,
+      "sha256": "5888c8c5dd88c2bc93b685c1e18c6d2362ed701f7cddd633680449de867be8d3",
+      "anchors": [
+        {
+          "token": "baseUrl",
+          "count": 1
+        }
+      ],
+      "controls": []
+    },
+    {
+      "id": "line.bin.445",
+      "unit": "line",
+      "kind": "dynamic-import",
+      "file": "bin/memento.mjs",
+      "path": "runLeakScanCommand",
+      "raw": "  const { leakScan } = await import(pathToFileURL(fileURLToPath(LEAK_SCAN)).href);",
+      "occurrence": 1,
+      "sha256": "9771b58494e2ced9617588ad4f05e358b4a589d820deb405fc4ca503429f02fa",
+      "anchors": [
+        {
+          "token": "import(",
+          "count": 1
+        }
+      ],
+      "controls": []
+    },
+    {
+      "id": "line.bin.475",
+      "unit": "line",
+      "kind": "dynamic-import",
+      "file": "bin/memento.mjs",
+      "path": "runInitCommand",
+      "raw": "  const { initRepo } = await import(pathToFileURL(fileURLToPath(STORE_INIT)).href);",
+      "occurrence": 1,
+      "sha256": "b33dbdbc1db85b8dfd2ecde4c0db5b01e2cac94a54e98d341e1da37ac6e8bf03",
+      "anchors": [
+        {
+          "token": "import(",
+          "count": 1
+        }
+      ],
+      "controls": []
+    },
+    {
+      "id": "line.bin.507",
+      "unit": "line",
+      "kind": "dynamic-import",
+      "file": "bin/memento.mjs",
+      "path": "runCaptureFromSessionCommand",
+      "raw": "  const { captureFromSessionFile } = await import(pathToFileURL(fileURLToPath(INTAKE_SESSION)).href);",
+      "occurrence": 1,
+      "sha256": "3328fe3d754811f160cc9e457e382dab27646eb282ea5e13719fa344b2e0c546",
+      "anchors": [
+        {
+          "token": "import(",
+          "count": 1
+        }
+      ],
+      "controls": []
+    },
+    {
+      "id": "line.bin.508",
+      "unit": "line",
+      "kind": "dynamic-import",
+      "file": "bin/memento.mjs",
+      "path": "runCaptureFromSessionCommand",
+      "raw": "  const { openStore } = await import(pathToFileURL(fileURLToPath(STORE)).href);",
+      "occurrence": 1,
+      "sha256": "ff08b2f9102dcf58b1c63e9e3457b664bc95d131116b66f0f6b2a5eb68bc2cc2",
+      "anchors": [
+        {
+          "token": "import(",
+          "count": 1
+        }
+      ],
+      "controls": []
+    },
+    {
+      "id": "line.bin.509",
+      "unit": "line",
+      "kind": "dynamic-import",
+      "file": "bin/memento.mjs",
+      "path": "runCaptureFromSessionCommand",
+      "raw": "  const { createReceipts } = await import(pathToFileURL(fileURLToPath(RECEIPTS)).href);",
+      "occurrence": 1,
+      "sha256": "27b6f398b9b9c437be6183c053fbc1b82432eebbba3c9f6d1922eb4921446217",
+      "anchors": [
+        {
+          "token": "import(",
+          "count": 1
+        }
+      ],
+      "controls": []
+    },
+    {
+      "id": "line.bin.584",
+      "unit": "line",
+      "kind": "dynamic-import",
+      "file": "bin/memento.mjs",
+      "path": "runWikiImportCommand",
+      "raw": "  const { openStore } = await import(pathToFileURL(fileURLToPath(STORE)).href);",
+      "occurrence": 1,
+      "sha256": "ff08b2f9102dcf58b1c63e9e3457b664bc95d131116b66f0f6b2a5eb68bc2cc2",
+      "anchors": [
+        {
+          "token": "import(",
+          "count": 1
+        }
+      ],
+      "controls": []
+    },
+    {
+      "id": "line.bin.585",
+      "unit": "line",
+      "kind": "dynamic-import",
+      "file": "bin/memento.mjs",
+      "path": "runWikiImportCommand",
+      "raw": "  const { importPickedRows, WikiImportError } = await import(",
+      "occurrence": 1,
+      "sha256": "8c9e7b6c22da4686d8b7fccf060fa667187a205b182b0b1e487a1f82773924fe",
+      "anchors": [
+        {
+          "token": "import(",
+          "count": 1
+        }
+      ],
+      "controls": []
+    },
+    {
+      "id": "line.bin.676",
+      "unit": "line",
+      "kind": "dynamic-import",
+      "file": "bin/memento.mjs",
+      "path": "runSyncCommand",
+      "raw": "      const { observeChildProcesses } = await import(pathToFileURL(fileURLToPath(STORE_GIT)).href);",
+      "occurrence": 1,
+      "sha256": "51c1db1c0ead31d7abc49ae932a540960a44d19f0279026795e5ed026533fa68",
+      "anchors": [
+        {
+          "token": "import(",
+          "count": 1
+        }
+      ],
+      "controls": [
+        {
+          "raw": "if (pidLog) {",
+          "sha256": "f1fbb98fbc148a88fa4c287702e04caf513c60f91921f4789cfe31455a77b9c3"
+        },
+        {
+          "raw": "try {",
+          "sha256": "03d9aba6351173e5f8c479f3e786247afca28bd814dd42e6477fa51b48c9fe36"
+        }
+      ]
+    },
+    {
+      "id": "line.bin.687",
+      "unit": "line",
+      "kind": "dynamic-import",
+      "file": "bin/memento.mjs",
+      "path": "runSyncCommand",
+      "raw": "    const { runSync } = await import(pathToFileURL(fileURLToPath(SYNC)).href);",
+      "occurrence": 1,
+      "sha256": "a110e068a643b1f3d2197ecd4b3d143b0da0bd9676b4b8e645f59416ecca4bc0",
+      "anchors": [
+        {
+          "token": "import(",
+          "count": 1
+        }
+      ],
+      "controls": [
+        {
+          "raw": "try {",
+          "sha256": "03d9aba6351173e5f8c479f3e786247afca28bd814dd42e6477fa51b48c9fe36"
+        }
+      ]
+    },
+    {
+      "id": "line.bin.688",
+      "unit": "line",
+      "kind": "dynamic-import",
+      "file": "bin/memento.mjs",
+      "path": "runSyncCommand",
+      "raw": "    const { createDiscordClient } = await import(pathToFileURL(fileURLToPath(DISCORD_CLIENT)).href);",
+      "occurrence": 1,
+      "sha256": "7b5ae042399d4ae53491f40bb6a97ce9d69431ba9afadc1008cf780cc876ea0b",
+      "anchors": [
+        {
+          "token": "import(",
+          "count": 1
+        }
+      ],
+      "controls": [
+        {
+          "raw": "try {",
+          "sha256": "03d9aba6351173e5f8c479f3e786247afca28bd814dd42e6477fa51b48c9fe36"
+        }
+      ]
+    },
+    {
+      "id": "line.bin.689",
+      "unit": "line",
+      "kind": "dynamic-import",
+      "file": "bin/memento.mjs",
+      "path": "runSyncCommand",
+      "raw": "    const { createReceipts } = await import(pathToFileURL(fileURLToPath(RECEIPTS)).href);",
+      "occurrence": 1,
+      "sha256": "ffba17ae0b8783c6ab138f1539f8c10005872c6d9cf621cca665cb87733d9cd7",
+      "anchors": [
+        {
+          "token": "import(",
+          "count": 1
+        }
+      ],
+      "controls": [
+        {
+          "raw": "try {",
+          "sha256": "03d9aba6351173e5f8c479f3e786247afca28bd814dd42e6477fa51b48c9fe36"
+        }
+      ]
+    },
+    {
+      "id": "line.bin.692",
+      "unit": "line",
+      "kind": "request-line",
+      "file": "bin/memento.mjs",
+      "path": "runSyncCommand",
+      "raw": "      ...(discordBase ? { baseUrl: discordBase } : {}),",
+      "occurrence": 1,
+      "sha256": "db1a009b5766e4c262a9d3ad8c7ba8aab43cf23833014963d6d52ab2b66c8b61",
+      "anchors": [
+        {
+          "token": "baseUrl",
+          "count": 1
+        }
+      ],
+      "controls": [
+        {
+          "raw": "try {",
+          "sha256": "03d9aba6351173e5f8c479f3e786247afca28bd814dd42e6477fa51b48c9fe36"
+        }
+      ]
+    },
+    {
+      "id": "line.bin.767",
+      "unit": "line",
+      "kind": "request-line",
+      "file": "bin/memento.mjs",
+      "path": "main",
+      "raw": "  const baseUrl = values['base-url'];",
+      "occurrence": 1,
+      "sha256": "0bf4eeeb84cafca7359c58527ab6a3a330cb9d558d17dd79be2de4a9939b88d2",
+      "anchors": [
+        {
+          "token": "baseUrl",
+          "count": 1
+        }
+      ],
+      "controls": []
+    },
+    {
+      "id": "line.bin.858",
+      "unit": "line",
+      "kind": "request-line",
+      "file": "bin/memento.mjs",
+      "path": "main",
+      "raw": "      if (baseUrl !== undefined && baseUrl.length === 0) {",
+      "occurrence": 1,
+      "sha256": "3d9781d88a8c9345442c5510514de7fb21a755af76d596bfe0e80a39ddae1db5",
+      "anchors": [
+        {
+          "token": "baseUrl",
+          "count": 2
+        }
+      ],
+      "controls": [
+        {
+          "raw": "if (values.discord) {",
+          "sha256": "32858c698072f4e0de35917c15f3f736aaf0d5ff02491ae93aa27af885603868"
+        },
+        {
+          "raw": "if (command === 'doctor') {",
+          "sha256": "8a495bb82ef541c2e6709c846a608adf60449eb755f04937cd25bdfe6112178d"
+        }
+      ]
+    },
+    {
+      "id": "line.bin.862",
+      "unit": "line",
+      "kind": "request-line",
+      "file": "bin/memento.mjs",
+      "path": "main",
+      "raw": "      return printDiscordCheck(baseUrl);",
+      "occurrence": 1,
+      "sha256": "a79c88b42e4fd4930a25df76f7f3b12acb9545069817eb9ac880e35dc60b00ed",
+      "anchors": [
+        {
+          "token": "baseUrl",
+          "count": 1
+        }
+      ],
+      "controls": [
+        {
+          "raw": "if (values.discord) {",
+          "sha256": "32858c698072f4e0de35917c15f3f736aaf0d5ff02491ae93aa27af885603868"
+        },
+        {
+          "raw": "if (command === 'doctor') {",
+          "sha256": "8a495bb82ef541c2e6709c846a608adf60449eb755f04937cd25bdfe6112178d"
+        }
+      ]
+    },
+    {
+      "id": "line.bin.864",
+      "unit": "line",
+      "kind": "request-line",
+      "file": "bin/memento.mjs",
+      "path": "main",
+      "raw": "    if (baseUrl !== undefined) {",
+      "occurrence": 1,
+      "sha256": "4a141301219775791504c920cb7d8e879115f4311bf5f1e4e37b5cd0b96eed25",
+      "anchors": [
+        {
+          "token": "baseUrl",
+          "count": 1
+        }
+      ],
+      "controls": [
+        {
+          "raw": "if (command === 'doctor') {",
+          "sha256": "8a495bb82ef541c2e6709c846a608adf60449eb755f04937cd25bdfe6112178d"
+        }
+      ]
+    },
+    {
+      "id": "line.bin.10",
+      "unit": "line",
+      "kind": "url-producer",
+      "file": "bin/memento.mjs",
+      "path": "<top>",
+      "raw": "const CODEC = new URL('../src/card/codec.mjs', import.meta.url);",
+      "occurrence": 1,
+      "sha256": "c773da15b49a737d583aa6af7f980a8b64e857e0ec78227415ff33f7b533c087",
+      "anchors": [
+        {
+          "token": "URL",
+          "count": 1
+        }
+      ],
+      "controls": []
+    },
+    {
+      "id": "line.bin.11",
+      "unit": "line",
+      "kind": "url-producer",
+      "file": "bin/memento.mjs",
+      "path": "<top>",
+      "raw": "const DISCORD_CLIENT = new URL('../src/discord/client.mjs', import.meta.url);",
+      "occurrence": 1,
+      "sha256": "8cf92510dedef9645817124ebf769e64ff32ce5966ca02a9711a68f5127118ac",
+      "anchors": [
+        {
+          "token": "URL",
+          "count": 1
+        }
+      ],
+      "controls": []
+    },
+    {
+      "id": "line.bin.12",
+      "unit": "line",
+      "kind": "url-producer",
+      "file": "bin/memento.mjs",
+      "path": "<top>",
+      "raw": "const WIKI_SCANNER = new URL('../src/wiki/scan.mjs', import.meta.url);",
+      "occurrence": 1,
+      "sha256": "a7882ccaef4591498b695c18396fc9aeaf73c522d7bd7c13047855b8f42f0247",
+      "anchors": [
+        {
+          "token": "URL",
+          "count": 1
+        }
+      ],
+      "controls": []
+    },
+    {
+      "id": "line.bin.13",
+      "unit": "line",
+      "kind": "url-producer",
+      "file": "bin/memento.mjs",
+      "path": "<top>",
+      "raw": "const WIKI_IMPORT = new URL('../src/wiki/import.mjs', import.meta.url);",
+      "occurrence": 1,
+      "sha256": "c8bfad94ef0b42707e0d6365b9f121d666ab2f7ac3a13996c68da77c9a52f584",
+      "anchors": [
+        {
+          "token": "URL",
+          "count": 1
+        }
+      ],
+      "controls": []
+    },
+    {
+      "id": "line.bin.123",
+      "unit": "line",
+      "kind": "dynamic-import",
+      "file": "bin/memento.mjs",
+      "path": "printParse",
+      "raw": "  const { parse } = await import(pathToFileURL(fileURLToPath(CODEC)).href);",
+      "occurrence": 1,
+      "sha256": "12f5d59f6747f26e60c94446f0823cf6d0ad898aa8af069ed994a9cdd55aa4ef",
+      "anchors": [
+        {
+          "token": "import(",
+          "count": 1
+        }
+      ],
+      "controls": []
+    },
+    {
+      "id": "line.bin.14",
+      "unit": "line",
+      "kind": "url-producer",
+      "file": "bin/memento.mjs",
+      "path": "<top>",
+      "raw": "const PROBE = new URL('../src/probe/probe.mjs', import.meta.url);",
+      "occurrence": 1,
+      "sha256": "d65870885fb26489e551684f9b63c78f8bb9976c9ffd59639337d28e8a1bb898",
+      "anchors": [
+        {
+          "token": "URL",
+          "count": 1
+        }
+      ],
+      "controls": []
+    },
+    {
+      "id": "line.bin.144",
+      "unit": "line",
+      "kind": "dynamic-import",
+      "file": "bin/memento.mjs",
+      "path": "printDiscordCheck",
+      "raw": "  const { createDiscordClient } = await import(pathToFileURL(fileURLToPath(DISCORD_CLIENT)).href);",
+      "occurrence": 1,
+      "sha256": "b5d56b778a3cb10dfc066a0685e57a1c0749700e562e60ac0836b13bd2accfe0",
+      "anchors": [
+        {
+          "token": "import(",
+          "count": 1
+        }
+      ],
+      "controls": []
+    },
+    {
+      "id": "line.bin.15",
+      "unit": "line",
+      "kind": "url-producer",
+      "file": "bin/memento.mjs",
+      "path": "<top>",
+      "raw": "const LEAK_SCAN = new URL('../src/probe/leak-scan.mjs', import.meta.url);",
+      "occurrence": 1,
+      "sha256": "4290c2baf329c92e77c2443f77c40b6c225c8d69ee6726dbfb0585c6c30c6af7",
+      "anchors": [
+        {
+          "token": "URL",
+          "count": 1
+        }
+      ],
+      "controls": []
+    },
+    {
+      "id": "line.bin.16",
+      "unit": "line",
+      "kind": "url-producer",
+      "file": "bin/memento.mjs",
+      "path": "<top>",
+      "raw": "const STORE_INIT = new URL('../src/store/init.mjs', import.meta.url);",
+      "occurrence": 1,
+      "sha256": "b317cc057f69ae633386913ebdc73b421bde9672b14a72d5118dccd89a4a962d",
+      "anchors": [
+        {
+          "token": "URL",
+          "count": 1
+        }
+      ],
+      "controls": []
+    },
+    {
+      "id": "line.bin.184",
+      "unit": "line",
+      "kind": "dynamic-import",
+      "file": "bin/memento.mjs",
+      "path": "runRoundtripCommand",
+      "raw": "  const { runRoundtrip } = await import(pathToFileURL(fileURLToPath(ROUNDTRIP)).href);",
+      "occurrence": 1,
+      "sha256": "bfcdec53b922f1cbe23e4c14f71403f27cc6ad00625c209f9fae86f37fa79e00",
+      "anchors": [
+        {
+          "token": "import(",
+          "count": 1
+        }
+      ],
+      "controls": []
+    },
+    {
+      "id": "line.bin.17",
+      "unit": "line",
+      "kind": "url-producer",
+      "file": "bin/memento.mjs",
+      "path": "<top>",
+      "raw": "const STORE = new URL('../src/store/store.mjs', import.meta.url);",
+      "occurrence": 1,
+      "sha256": "319ef171cf268ae446f91e39021d2908c5f7f5b18b255322c4c8c8b1c0e420af",
+      "anchors": [
+        {
+          "token": "URL",
+          "count": 1
+        }
+      ],
+      "controls": []
+    },
+    {
+      "id": "line.bin.18",
+      "unit": "line",
+      "kind": "url-producer",
+      "file": "bin/memento.mjs",
+      "path": "<top>",
+      "raw": "const INTAKE_SESSION = new URL('../src/intake/session.mjs', import.meta.url);",
+      "occurrence": 1,
+      "sha256": "c604d674088bd4f015728b54e00ce5791bf4b1e52c71e6c0aea8684b2b68c092",
+      "anchors": [
+        {
+          "token": "URL",
+          "count": 1
+        }
+      ],
+      "controls": []
+    },
+    {
+      "id": "line.api.baseUrl-config",
+      "unit": "line",
+      "kind": "request-line",
+      "file": "src/api.mjs",
+      "path": "createBoardApi",
+      "raw": "    ...(config.baseUrl ? { baseUrl: config.baseUrl } : {}),",
+      "occurrence": 1,
+      "sha256": "a9f08045969026db904a9808e0ef660cfd69e1710e2ecff4bc004dfaa138af32",
+      "anchors": [
+        {
+          "token": "baseUrl",
+          "count": 3
+        }
+      ],
+      "controls": []
+    },
+    {
+      "id": "line.client.baseUrl-return",
+      "unit": "line",
+      "kind": "request-line",
+      "file": "src/discord/client.mjs",
+      "path": "createDiscordClient",
+      "raw": "    baseUrl,",
+      "occurrence": 1,
+      "sha256": "6b510b6d021d4eef16b16f49f1d8c0f6d8397987f4e600929c20ae3cc630c20c",
+      "anchors": [
+        {
+          "token": "baseUrl",
+          "count": 1
+        }
+      ],
+      "controls": []
+    },
+    {
+      "id": "line.client.import-http",
+      "unit": "line",
+      "kind": "module-specifier",
+      "file": "src/discord/client.mjs",
+      "path": "<top>",
+      "raw": "import { Agent as HttpAgent, request as httpRequest } from 'node:http';",
+      "occurrence": 1,
+      "sha256": "c8a5070d12bcf0382b660a22f4922f9f3969d37e901b6cfcf10a44367a891b0f",
+      "anchors": [
+        {
+          "token": "httpRequest",
+          "count": 1
+        },
+        {
+          "token": "HttpAgent",
+          "count": 1
+        }
+      ],
+      "controls": []
+    },
+    {
+      "id": "line.client.import-https",
+      "unit": "line",
+      "kind": "module-specifier",
+      "file": "src/discord/client.mjs",
+      "path": "<top>",
+      "raw": "import { Agent as HttpsAgent, request as httpsRequest } from 'node:https';",
+      "occurrence": 1,
+      "sha256": "c3e14afe862fc4594146cda9ae97a0d5fc78b062f39b203bb3a4aefc360cf0b4",
+      "anchors": [
+        {
+          "token": "httpsRequest",
+          "count": 1
+        },
+        {
+          "token": "HttpsAgent",
+          "count": 1
+        }
+      ],
+      "controls": []
+    },
+    {
+      "id": "line.client.import-timers",
+      "unit": "line",
+      "kind": "module-specifier",
+      "file": "src/discord/client.mjs",
+      "path": "<top>",
+      "raw": "import { setTimeout as delay } from 'node:timers/promises';",
+      "occurrence": 1,
+      "sha256": "799a17dcce5a47778ec7801de51045893ca0fc7424117e37af508fb005c3f039",
+      "anchors": [
+        {
+          "token": "setTimeout",
+          "count": 1
+        },
+        {
+          "token": "delay",
+          "count": 1
+        }
+      ],
+      "controls": []
+    },
+    {
+      "id": "line.client.default-base-url",
+      "unit": "line",
+      "kind": "module-specifier",
+      "file": "src/discord/client.mjs",
+      "path": "<top>",
+      "raw": "export const DEFAULT_BASE_URL = 'https://discord.com/api/v10';",
+      "occurrence": 1,
+      "sha256": "778f793ab44a7b6c11977411b09b7f5e4f6797a5ebb8817b0e5b8e8aea1e79f8",
+      "anchors": [
+        {
+          "token": "DEFAULT_BASE_URL",
+          "count": 1
+        }
+      ],
+      "controls": []
+    },
+    {
+      "id": "line.client.baseUrl-alias",
+      "unit": "line",
+      "kind": "request-line",
+      "file": "src/discord/client.mjs",
+      "path": "createDiscordClient",
+      "raw": "  const baseUrl = options.baseUrl ?? DEFAULT_BASE_URL;",
+      "occurrence": 1,
+      "sha256": "f754a32f0290699ca64e185fc8e6595e66647789f23eb9b55ec04b96158d7adb",
+      "anchors": [
+        {
+          "token": "baseUrl",
+          "count": 2
+        },
+        {
+          "token": "DEFAULT_BASE_URL",
+          "count": 1
+        }
+      ],
+      "controls": []
+    },
+    {
+      "id": "line.client.sleep-alias",
+      "unit": "line",
+      "kind": "delay-line",
+      "file": "src/discord/client.mjs",
+      "path": "createDiscordClient",
+      "raw": "  const sleep = options.clock?.sleep ?? options.sleep ?? sleepReal;",
+      "occurrence": 1,
+      "sha256": "9ad6cc7d1f5dcbbdb9bf1a345b3c058176fac05dc5d6c220794e8848cd116438",
+      "anchors": [
+        {
+          "token": "sleepReal",
+          "count": 1
+        },
+        {
+          "token": "sleep",
+          "count": 3
+        }
+      ],
+      "controls": []
+    },
+    {
+      "id": "line.fake.handle-url",
+      "unit": "line",
+      "kind": "url-producer",
+      "file": "src/discord/fake-server.mjs",
+      "path": "startFakeDiscord>handle",
+      "raw": "    const url = new URL(request.url, 'http://127.0.0.1');",
+      "occurrence": 1,
+      "sha256": "f9c70d3cfcb126723763c44b94e6d79ab76a5ce5f8e81aba2483453097f51bb4",
+      "anchors": [
+        {
+          "token": "URL",
+          "count": 1
+        }
+      ],
+      "controls": []
+    },
+    {
+      "id": "line.fake.import-http",
+      "unit": "line",
+      "kind": "module-specifier",
+      "file": "src/discord/fake-server.mjs",
+      "path": "<top>",
+      "raw": "import { createServer } from 'node:http';",
+      "occurrence": 1,
+      "sha256": "ae322597c0425871acadf16d29c44f304a237678dca48a969002b6a573635172",
+      "anchors": [],
+      "controls": []
+    },
+    {
+      "id": "line.fake.import-timers",
+      "unit": "line",
+      "kind": "module-specifier",
+      "file": "src/discord/fake-server.mjs",
+      "path": "<top>",
+      "raw": "import { setTimeout as delay } from 'node:timers/promises';",
+      "occurrence": 1,
+      "sha256": "799a17dcce5a47778ec7801de51045893ca0fc7424117e37af508fb005c3f039",
+      "anchors": [
+        {
+          "token": "setTimeout",
+          "count": 1
+        },
+        {
+          "token": "delay",
+          "count": 1
+        }
+      ],
+      "controls": []
+    },
+    {
+      "id": "line.fake.baseUrl",
+      "unit": "line",
+      "kind": "request-line",
+      "file": "src/discord/fake-server.mjs",
+      "path": "startFakeDiscord",
+      "raw": "    baseUrl: `http://127.0.0.1:${port}${API_PREFIX}`,",
+      "occurrence": 1,
+      "sha256": "7180fb098f395efe784e60291bb01f40c4939aa989c185aa4ce1e0a8872fb923",
+      "anchors": [
+        {
+          "token": "baseUrl",
+          "count": 1
+        }
+      ],
+      "controls": []
+    },
+    {
+      "id": "line.roundtrip.client-baseUrl",
+      "unit": "line",
+      "kind": "request-line",
+      "file": "src/doctor/roundtrip.mjs",
+      "path": "runRoundtrip",
+      "raw": "    const client = createDiscordClient({ tokenFile, baseUrl: fake.baseUrl, clock: fake.clock });",
+      "occurrence": 1,
+      "sha256": "4abee6fad76fc1c4e63e3041126a77eae9aeb6c1746e5c0f720d548a1a76d78a",
+      "anchors": [
+        {
+          "token": "baseUrl",
+          "count": 2
+        }
+      ],
+      "controls": [
+        {
+          "raw": "try {",
+          "sha256": "03d9aba6351173e5f8c479f3e786247afca28bd814dd42e6477fa51b48c9fe36"
+        }
+      ]
+    },
+    {
+      "id": "line.roundtrip.config-baseUrl",
+      "unit": "line",
+      "kind": "request-line",
+      "file": "src/doctor/roundtrip.mjs",
+      "path": "runRoundtrip",
+      "raw": "      config: { repoPath: clonePath, tokenFile, baseUrl: fake.baseUrl },",
+      "occurrence": 1,
+      "sha256": "299c6138fa555a20d2a6d14d9f59c74806322b69fd6405ca35e4fca29f1a11e0",
+      "anchors": [
+        {
+          "token": "baseUrl",
+          "count": 2
+        }
+      ],
+      "controls": [
+        {
+          "raw": "try {",
+          "sha256": "03d9aba6351173e5f8c479f3e786247afca28bd814dd42e6477fa51b48c9fe36"
+        }
+      ]
+    },
+    {
+      "id": "line.extension.globalThis",
+      "unit": "line",
+      "kind": "global-alias",
+      "file": "src/extension.mjs",
+      "path": "extension",
+      "raw": "  const registration = globalThis[REGISTRATION_KEY] ??= {",
+      "occurrence": 1,
+      "sha256": "a64644c9bda65e587707f002eb130399844bdcdcd8f87c21ede4a8ad4b03eee9",
+      "anchors": [
+        {
+          "token": "globalThis",
+          "count": 1
+        }
+      ],
+      "controls": []
+    },
+    {
+      "id": "line.owner.sleep-a",
+      "unit": "line",
+      "kind": "delay-line",
+      "file": "src/probe/probe-owner.mjs",
+      "path": "runOwnerPhase",
+      "raw": "    if (index < auditReads - 1) await ctx.sleep(intervalMs);",
+      "occurrence": 1,
+      "sha256": "a895231777f8064231d4743b2680590b33767c1044cb08f3fa5879bd53daba97",
+      "anchors": [
+        {
+          "token": "sleep",
+          "count": 1
+        }
+      ],
+      "controls": [
+        {
+          "raw": "for (let index = 0; index < auditReads; index += 1) {",
+          "sha256": "d2aadd8adea71b32779a99602a7336f7c5167538f349b9d270b9f683bf8666cd"
+        }
+      ]
+    },
+    {
+      "id": "line.owner.sleep-b",
+      "unit": "line",
+      "kind": "delay-line",
+      "file": "src/probe/probe-owner.mjs",
+      "path": "runOwnerPhase",
+      "raw": "    if (index < reads - 1) await ctx.sleep(intervalMs);",
+      "occurrence": 1,
+      "sha256": "25f11266dded17d19be2b73332dfa0ff96c01b6a8913875aa164ba82acb00406",
+      "anchors": [
+        {
+          "token": "sleep",
+          "count": 1
+        }
+      ],
+      "controls": [
+        {
+          "raw": "for (let index = 0; index < reads; index += 1) {",
+          "sha256": "7bf36bebb342dbdc4b82eecc2334ed348b6b725ea2ad7a2de7759526879efcc6"
+        }
+      ]
+    },
+    {
+      "id": "line.setup.sleep-a",
+      "unit": "line",
+      "kind": "delay-line",
+      "file": "src/probe/probe-setup.mjs",
+      "path": "runSetup",
+      "raw": "    if (index < (options.auditReads ?? 3) - 1) await ctx.sleep(options.auditIntervalMs ?? 20_000);",
+      "occurrence": 1,
+      "sha256": "6bc26e26531ac9bd5406c7853c960051bdffef70b4bb4ae4631283fbd19ee610",
+      "anchors": [
+        {
+          "token": "sleep",
+          "count": 1
+        }
+      ],
+      "controls": [
+        {
+          "raw": "for (let index = 0; index < (options.auditReads ?? 3); index += 1) {",
+          "sha256": "0abe3cb19e4323f62cb06de5f4a3f4a84668844f580e7168f27f3d8a668a3b37"
+        }
+      ]
+    },
+    {
+      "id": "line.setup.sleep-alias",
+      "unit": "line",
+      "kind": "delay-line",
+      "file": "src/probe/probe-setup.mjs",
+      "path": "runSetup",
+      "raw": "    sleep: ctx.sleep,",
+      "occurrence": 1,
+      "sha256": "66b347e6656b08f424b78f83a7d2ed9c6c4347e085126730bcbff8decc3dd728",
+      "anchors": [
+        {
+          "token": "sleep",
+          "count": 2
+        }
+      ],
+      "controls": []
+    },
+    {
+      "id": "line.probe.runProbe-sleep-default",
+      "unit": "line",
+      "kind": "delay-line",
+      "file": "src/probe/probe.mjs",
+      "path": "runProbe",
+      "raw": "  sleep = realSleep,",
+      "occurrence": 1,
+      "sha256": "7e4b62e0ffa1781f1e05f2218b1ee767c094beff3ede486ea99dd579f457d0c4",
+      "anchors": [
+        {
+          "token": "realSleep",
+          "count": 1
+        },
+        {
+          "token": "sleep",
+          "count": 1
+        }
+      ],
+      "controls": []
+    },
+    {
+      "id": "line.probe.runProbe-sleep",
+      "unit": "line",
+      "kind": "delay-line",
+      "file": "src/probe/probe.mjs",
+      "path": "runProbe",
+      "raw": "    sleep,",
+      "occurrence": 1,
+      "sha256": "33719f2364563e9e0fae7caab6a36ecc3e31d329513e7080ea11a3975f46a37f",
+      "anchors": [
+        {
+          "token": "sleep",
+          "count": 1
+        }
+      ],
+      "controls": []
+    },
+    {
+      "id": "line.probe.export-realSleep",
+      "unit": "line",
+      "kind": "delay-line",
+      "file": "src/probe/probe.mjs",
+      "path": "<top>",
+      "raw": "export { realSleep };",
+      "occurrence": 1,
+      "sha256": "24b0a7815e45ba4291fde2fbe43b878058aa995a95219af817110816f143b284",
+      "anchors": [
+        {
+          "token": "realSleep",
+          "count": 1
+        }
+      ],
+      "controls": []
+    },
+    {
+      "id": "line.probe.import-timers",
+      "unit": "line",
+      "kind": "module-specifier",
+      "file": "src/probe/probe.mjs",
+      "path": "<top>",
+      "raw": "import { setTimeout as delay } from 'node:timers/promises';",
+      "occurrence": 1,
+      "sha256": "799a17dcce5a47778ec7801de51045893ca0fc7424117e37af508fb005c3f039",
+      "anchors": [
+        {
+          "token": "setTimeout",
+          "count": 1
+        },
+        {
+          "token": "delay",
+          "count": 1
+        }
+      ],
+      "controls": []
+    },
+    {
+      "id": "line.tokenMove.import-http",
+      "unit": "line",
+      "kind": "module-specifier",
+      "file": "src/probe/token-move.mjs",
+      "path": "<top>",
+      "raw": "import { Agent as HttpAgent, request as httpRequest } from 'node:http';",
+      "occurrence": 1,
+      "sha256": "c8a5070d12bcf0382b660a22f4922f9f3969d37e901b6cfcf10a44367a891b0f",
+      "anchors": [
+        {
+          "token": "httpRequest",
+          "count": 1
+        },
+        {
+          "token": "HttpAgent",
+          "count": 1
+        }
+      ],
+      "controls": []
+    },
+    {
+      "id": "line.tokenMove.import-https",
+      "unit": "line",
+      "kind": "module-specifier",
+      "file": "src/probe/token-move.mjs",
+      "path": "<top>",
+      "raw": "import { Agent as HttpsAgent, request as httpsRequest } from 'node:https';",
+      "occurrence": 1,
+      "sha256": "c3e14afe862fc4594146cda9ae97a0d5fc78b062f39b203bb3a4aefc360cf0b4",
+      "anchors": [
+        {
+          "token": "httpsRequest",
+          "count": 1
+        },
+        {
+          "token": "HttpsAgent",
+          "count": 1
+        }
+      ],
+      "controls": []
+    },
+    {
+      "id": "line.tokenMove.main-baseUrl",
+      "unit": "line",
+      "kind": "request-line",
+      "file": "src/probe/token-move.mjs",
+      "path": "main",
+      "raw": "    ...(values['base-url'] ? { baseUrl: values['base-url'] } : {}),",
+      "occurrence": 1,
+      "sha256": "5888c8c5dd88c2bc93b685c1e18c6d2362ed701f7cddd633680449de867be8d3",
+      "anchors": [
+        {
+          "token": "baseUrl",
+          "count": 1
+        }
+      ],
+      "controls": []
+    },
+    {
+      "id": "line.tokenMove.default-base-url",
+      "unit": "line",
+      "kind": "module-specifier",
+      "file": "src/probe/token-move.mjs",
+      "path": "<top>",
+      "raw": "export const DEFAULT_BASE_URL = 'https://discord.com/api/v10';",
+      "occurrence": 1,
+      "sha256": "778f793ab44a7b6c11977411b09b7f5e4f6797a5ebb8817b0e5b8e8aea1e79f8",
+      "anchors": [
+        {
+          "token": "DEFAULT_BASE_URL",
+          "count": 1
+        }
+      ],
+      "controls": []
+    },
+    {
+      "id": "line.lock.import-timers",
+      "unit": "line",
+      "kind": "module-specifier",
+      "file": "src/store/lock.mjs",
+      "path": "<top>",
+      "raw": "import { setTimeout as delay } from 'node:timers/promises';",
+      "occurrence": 1,
+      "sha256": "799a17dcce5a47778ec7801de51045893ca0fc7424117e37af508fb005c3f039",
+      "anchors": [
+        {
+          "token": "setTimeout",
+          "count": 1
+        },
+        {
+          "token": "delay",
+          "count": 1
+        }
+      ],
+      "controls": []
+    },
+    {
+      "id": "line.lock.sleep-alias",
+      "unit": "line",
+      "kind": "delay-line",
+      "file": "src/store/lock.mjs",
+      "path": "acquire",
+      "raw": "  const sleep = options.scheduler?.sleep ?? options.sleep ?? ((ms) => delay(ms));",
+      "occurrence": 1,
+      "sha256": "024603c52b9720cdbc6914c9bf53f79d1a5c503d387497a4c41f60479b872971",
+      "anchors": [
+        {
+          "token": "sleep",
+          "count": 3
+        },
+        {
+          "token": "delay",
+          "count": 1
+        }
+      ],
+      "controls": []
+    },
+    {
+      "id": "line.lock.sleep",
+      "unit": "line",
+      "kind": "delay-line",
+      "file": "src/store/lock.mjs",
+      "path": "acquire",
+      "raw": "    await sleep(wait);",
+      "occurrence": 1,
+      "sha256": "ca1bc7bb3ddda2544fb46ab2b84bf76b2ddb21c4039a19bdbef0eef0a2142db6",
+      "anchors": [
+        {
+          "token": "sleep",
+          "count": 1
+        }
+      ],
+      "controls": [
+        {
+          "raw": "for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt += 1) {",
+          "sha256": "27c37773bebcc707e94f0c70cbc9365d8014d8486c4766f64c7756e63afefcfa"
+        }
+      ]
+    },
+    {
+      "id": "line.store.import-timers",
+      "unit": "line",
+      "kind": "module-specifier",
+      "file": "src/store/store.mjs",
+      "path": "<top>",
+      "raw": "import { setTimeout as delay } from 'node:timers/promises';",
+      "occurrence": 1,
+      "sha256": "799a17dcce5a47778ec7801de51045893ca0fc7424117e37af508fb005c3f039",
+      "anchors": [
+        {
+          "token": "setTimeout",
+          "count": 1
+        },
+        {
+          "token": "delay",
+          "count": 1
+        }
+      ],
+      "controls": []
+    },
+    {
+      "id": "line.store.sleep-alias",
+      "unit": "line",
+      "kind": "delay-line",
+      "file": "src/store/store.mjs",
+      "path": "openStore",
+      "raw": "  const sleep = options.sleep ?? ((ms) => delay(ms));",
+      "occurrence": 1,
+      "sha256": "dabba0068245b418095ab2eb67b68da2e5e8ada565c63dfb71da32210542d2b1",
+      "anchors": [
+        {
+          "token": "sleep",
+          "count": 2
+        },
+        {
+          "token": "delay",
+          "count": 1
+        }
+      ],
+      "controls": []
+    },
+    {
+      "id": "line.sync.baseUrl-config",
+      "unit": "line",
+      "kind": "request-line",
+      "file": "src/sync/run.mjs",
+      "path": "runPass",
+      "raw": "      ...(config.baseUrl ? { baseUrl: config.baseUrl } : {}),",
+      "occurrence": 1,
+      "sha256": "20939292584f49aa302de26e63a59ff1ce509211f5b029c7b0b0b3ccce515fa2",
+      "anchors": [
+        {
+          "token": "baseUrl",
+          "count": 3
+        }
+      ],
+      "controls": [
+        {
+          "raw": "if (!client) {",
+          "sha256": "51d21599cd88414c610bfa1cb95685d4470a2e7c238cb9bfbac1a06bdbccc724"
+        }
+      ]
+    },
+    {
+      "id": "line.sync.1576",
+      "unit": "line",
+      "kind": "delay-line",
+      "file": "src/sync/run.mjs",
+      "path": "verifyRecentWrites",
+      "raw": "  const delay = Number.isFinite(state.ownerAuditDelayMs)",
+      "occurrence": 1,
+      "sha256": "ac5e9d48a4d97d8d6bdde60dee4862466a1978b7cc32ea63b0a511a27b02a6a4",
+      "anchors": [
+        {
+          "token": "delay",
+          "count": 1
+        }
+      ],
+      "controls": []
+    },
+    {
+      "id": "line.sync.1579",
+      "unit": "line",
+      "kind": "delay-line",
+      "file": "src/sync/run.mjs",
+      "path": "verifyRecentWrites",
+      "raw": "  const retentionDelay = delay;",
+      "occurrence": 1,
+      "sha256": "e5e5a67310210362fd924eb66bdd8814152bd7639d671984baa36770873ad8d0",
+      "anchors": [
+        {
+          "token": "delay",
+          "count": 1
+        }
+      ],
+      "controls": []
+    },
+    {
+      "id": "line.sync.1756",
+      "unit": "line",
+      "kind": "delay-line",
+      "file": "src/sync/run.mjs",
+      "path": "verifyRecentWrites",
+      "raw": "    if (delay !== null && now() - patchAt >= delay && audit.coverage === 'complete' && ownVisible) {",
+      "occurrence": 1,
+      "sha256": "a22cee9f9394b5ca01cd242145b373895cf98ebc30ee04f3e8793f95b7f8bea6",
+      "anchors": [
+        {
+          "token": "delay",
+          "count": 2
+        }
+      ],
+      "controls": [
+        {
+          "raw": "for (const write of state.recentWrites ?? []) {",
+          "sha256": "469550d57e03703fe98abeb52f3704389483023a758d6efdf33417961d1e66ee"
+        }
+      ]
+    },
+    {
+      "id": "line.sync.createDeadline-call",
+      "unit": "line",
+      "kind": "timer-line",
+      "file": "src/sync/run.mjs",
+      "path": "runSync",
+      "raw": "    const discordDeadline = createDeadline(Math.max(1, Math.min(budget.discordMs, deadlines.discord - now())));",
+      "occurrence": 1,
+      "sha256": "9bd8d744ca2653c2ca367d7399122e91aab702acfdacf754d696d064cebc5008",
+      "anchors": [
+        {
+          "token": "createDeadline",
+          "count": 1
+        }
+      ],
+      "controls": [
+        {
+          "raw": "for (let pass = 0; pass < 2; pass += 1) {",
+          "sha256": "df3e819f6ad6018fce9cf8817cbf01588fd2ed5c681653b32e37115bf94be377"
+        }
+      ]
+    },
+    {
+      "body": {
+        "raw": "    runs += 1;\n    const discordDeadline = createDeadline(Math.max(1, Math.min(budget.discordMs, deadlines.discord - now())));\n    try {\n      last = await runPass({ ...context, discordDeadline });\n    } finally {\n      discordDeadline.dispose();\n      await release(lock);\n    }",
+        "sha256": "81c2d1c7129dcac5330fd11d8d33c84114f7997c88ad9c0fe08324cea251abfc"
+      },
+      "id": "line.sync.dispose",
+      "unit": "line",
+      "kind": "timer-line",
+      "file": "src/sync/run.mjs",
+      "path": "runSync",
+      "raw": "      discordDeadline.dispose();",
+      "occurrence": 1,
+      "sha256": "789027e8caa49dad6dee91524711ead7ce114d13d833eb6b0884c21fd9f3ac41",
+      "anchors": [
+        {
+          "token": "dispose",
+          "count": 1
+        }
+      ],
+      "controls": [
+        {
+          "raw": "finally {",
+          "sha256": "c4ed399760e348f4bec7a7f52d450a64f6f0d818e48d9714c04b389847b9fbfe"
+        },
+        {
+          "raw": "for (let pass = 0; pass < 2; pass += 1) {",
+          "sha256": "df3e819f6ad6018fce9cf8817cbf01588fd2ed5c681653b32e37115bf94be377"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,418 @@
+{
+  "schema": "memento.task13.flow-mutations.v1",
+  "rows": [
+    {
+      "id": "attempt2.timer-prior-dead-clear-control",
+      "priorCase": "timer-prior-dead-clear-control",
+      "file": "src/discord/client.mjs",
+      "find": "export function snowflakeTime(id) {\n  return Number((BigInt(id) >> 22n) + 1420070400000n);\n}",
+      "replace": "export function snowflakeTime(id) {\n  return Number((BigInt(id) >> 22n) + 1420070400000n);\n}\nconst leaked = setTimeout(() => {}, 60000); if (false) { clearTimeout(leaked); }",
+      "expectCode": "census:setTimeout:src/discord/client.mjs:"
+    },
+    {
+      "id": "attempt2.timer-unrelated-same-name-finally",
+      "priorCase": "timer-unrelated-same-name-finally",
+      "file": "src/api.mjs",
+      "find": "  return Promise.race([promise, gate]).finally(() => {\n    if (timer) clearTimeout(timer);\n  });\n}",
+      "replace": "  return Promise.race([promise, gate]).finally(() => {\n    if (timer) clearTimeout(timer);\n  });\n}\nfunction unrelatedTimer(){const timer=setTimeout(()=>{},60000);return timer;}",
+      "expectCode": "census:setTimeout:src/api.mjs:"
+    },
+    {
+      "id": "attempt2.timer-existing-finally-dead-clear",
+      "priorCase": "timer-existing-finally-dead-clear",
+      "file": "src/api.mjs",
+      "find": "    if (timer) clearTimeout(timer);",
+      "replace": "    if (false) clearTimeout(timer);",
+      "expectCode": "region-changed:fn.api.raceDeadline"
+    },
+    {
+      "id": "attempt2.promise-delay-no-longer-awaited",
+      "priorCase": "promise-delay-no-longer-awaited",
+      "file": "src/probe/probe.mjs",
+      "find": "return delay(",
+      "replace": "void delay(",
+      "expectCode": "region-changed:fn.probe.realSleep"
+    },
+    {
+      "id": "attempt2.request-prior-direct-control",
+      "priorCase": "request-prior-direct-control",
+      "file": "src/discord/client.mjs",
+      "find": "export function snowflakeTime(id) {\n  return Number((BigInt(id) >> 22n) + 1420070400000n);\n}",
+      "replace": "export function snowflakeTime(id) {\n  return Number((BigInt(id) >> 22n) + 1420070400000n);\n}\nhttpsRequest(\"https:\" + \"//example.invalid/\");",
+      "expectCode": "census:httpsRequest:src/discord/client.mjs:"
+    },
+    {
+      "id": "attempt2.request-current-target-host-reassigned",
+      "priorCase": "request-current-target-host-reassigned",
+      "file": "src/discord/client.mjs",
+      "find": "target = new URL(url);",
+      "replace": "target = new URL(url);\n        target.hostname = \"example.invalid\";",
+      "expectCode": "region-changed:fn.client.requestOnce"
+    },
+    {
+      "id": "attempt3.prior-unrelated-owner",
+      "priorCase": "prior-unrelated-owner",
+      "file": "src/api.mjs",
+      "find": "  return Promise.race([promise, gate]).finally(() => {\n    if (timer) clearTimeout(timer);\n  });\n}",
+      "replace": "  return Promise.race([promise, gate]).finally(() => {\n    if (timer) clearTimeout(timer);\n  });\n}\nfunction unrelatedTimer(){const timer=setTimeout(()=>{},60000);return timer;}",
+      "expectCode": "census:setTimeout:src/api.mjs:"
+    },
+    {
+      "id": "attempt3.prior-false-clear",
+      "priorCase": "prior-false-clear",
+      "file": "src/api.mjs",
+      "find": "    if (timer) clearTimeout(timer);",
+      "replace": "    if (false) clearTimeout(timer);",
+      "expectCode": "region-changed:fn.api.raceDeadline"
+    },
+    {
+      "id": "attempt3.prior-void-delay",
+      "priorCase": "prior-void-delay",
+      "file": "src/probe/probe.mjs",
+      "find": "return delay(",
+      "replace": "void delay(",
+      "expectCode": "region-changed:fn.probe.realSleep"
+    },
+    {
+      "id": "attempt3.same-class-block-shadowed-handle",
+      "priorCase": "same-class-block-shadowed-handle",
+      "file": "src/api.mjs",
+      "find": "    if (timer) clearTimeout(timer);",
+      "replace": "    const timer = null;\n    if (timer) clearTimeout(timer);",
+      "expectCode": "region-changed:fn.api.raceDeadline"
+    },
+    {
+      "id": "attempt3.same-class-promise-finally-unreachable-abort",
+      "priorCase": "same-class-promise-finally-unreachable-abort",
+      "file": "src/discord/fake-server.mjs",
+      "find": "      controller.abort();",
+      "replace": "      if (false) controller.abort();",
+      "expectCode": "region-changed:fn.fake.waitForNoOpenSockets"
+    },
+    {
+      "id": "attempt3.prior-intervening-hostname",
+      "priorCase": "prior-intervening-hostname",
+      "file": "src/discord/client.mjs",
+      "find": "target = new URL(url);",
+      "replace": "target = new URL(url);\n        target.hostname = \"example.invalid\";",
+      "expectCode": "region-changed:fn.client.requestOnce"
+    },
+    {
+      "id": "attempt3.same-class-request-argument-url-overridden",
+      "priorCase": "same-class-request-argument-url-overridden",
+      "file": "src/discord/client.mjs",
+      "find": "        now, requestTimeoutMs,",
+      "replace": "        now, requestTimeoutMs, url: \"https:\" + \"//example.invalid/\",",
+      "expectCode": "region-changed:fn.client.call"
+    },
+    {
+      "id": "attempt3.423A-extra-display-rejected",
+      "priorCase": "423A-extra-display-rejected",
+      "file": "src/discord/client.mjs",
+      "find": "export function snowflakeTime(id) {\n  return Number((BigInt(id) >> 22n) + 1420070400000n);\n}",
+      "replace": "export function snowflakeTime(id) {\n  return Number((BigInt(id) >> 22n) + 1420070400000n);\n}\nconst extra = 'https://discord.com/channels/1/2';",
+      "expectCode": "reason:unapproved URL literal"
+    },
+    {
+      "id": "attempt3.423A-changed-template-rejected",
+      "priorCase": "423A-changed-template-rejected",
+      "file": "src/api.mjs",
+      "find": "https://discord.com/channels/${guildId}/${card.discordThread}",
+      "replace": "https://discord.com/channels/${guildId}/${card.discordThread}?x=1",
+      "expectCode": "reason:unapproved URL literal"
+    },
+    {
+      "id": "predicted.disposed-true",
+      "file": "src/sync/run.mjs",
+      "find": "  const controller = new AbortController();\n  const timer = setTimeout(() => controller.abort(), Math.max(1, Number(ms) || 1));\n  timer.unref?.();\n  let disposed = false;",
+      "replace": "  const controller = new AbortController();\n  const timer = setTimeout(() => controller.abort(), Math.max(1, Number(ms) || 1));\n  timer.unref?.();\n  let disposed = true;",
+      "expectCode": "region-changed:fn.sync.createDeadline"
+    },
+    {
+      "id": "predicted.dispose-if-false",
+      "file": "src/sync/run.mjs",
+      "find": "      discordDeadline.dispose();",
+      "replace": "      if (false) discordDeadline.dispose();",
+      "expectCode": "stale-entry:line.sync.dispose"
+    },
+    {
+      "id": "predicted.unawaited-owner-sleep-a",
+      "file": "src/probe/probe-owner.mjs",
+      "find": "    if (index < auditReads - 1) await ctx.sleep(intervalMs);",
+      "replace": "    if (index < auditReads - 1) ctx.sleep(intervalMs);",
+      "expectCode": "stale-entry:line.owner.sleep-a"
+    },
+    {
+      "id": "predicted.unawaited-owner-sleep-b",
+      "file": "src/probe/probe-owner.mjs",
+      "find": "    if (index < reads - 1) await ctx.sleep(intervalMs);",
+      "replace": "    if (index < reads - 1) ctx.sleep(intervalMs);",
+      "expectCode": "stale-entry:line.owner.sleep-b"
+    },
+    {
+      "id": "predicted.unawaited-setup-sleep",
+      "file": "src/probe/probe-setup.mjs",
+      "find": "    if (index < (options.auditReads ?? 3) - 1) await ctx.sleep(options.auditIntervalMs ?? 20_000);",
+      "replace": "    if (index < (options.auditReads ?? 3) - 1) ctx.sleep(options.auditIntervalMs ?? 20_000);",
+      "expectCode": "stale-entry:line.setup.sleep-a"
+    },
+    {
+      "id": "predicted.unawaited-audit-sleep",
+      "file": "src/probe/audit.mjs",
+      "find": "    if (index < reads - 1) await sleep(intervalMs);",
+      "replace": "    if (index < reads - 1) sleep(intervalMs);",
+      "expectCode": "region-changed:fn.audit.findAuditBounded"
+    },
+    {
+      "id": "predicted.spread-url-override",
+      "file": "src/discord/client.mjs",
+      "find": "        method, url, token, payload, extraHeaders, signal: spec.signal, deadlineSignal: deadline,",
+      "replace": "        method, url, ...o, token, payload, extraHeaders, signal: spec.signal, deadlineSignal: deadline,",
+      "expectCode": "region-changed:fn.client.call"
+    },
+    {
+      "id": "predicted.agent-lookup-client",
+      "file": "src/discord/client.mjs",
+      "find": "      ? new HttpsAgent({ keepAlive: true, maxSockets: 4 })",
+      "replace": "      ? new HttpsAgent({ keepAlive: true, maxSockets: 4, lookup: () => '127.0.0.1' })",
+      "expectCode": "region-changed:fn.client.requestOnce"
+    },
+    {
+      "id": "predicted.agent-lookup-token",
+      "file": "src/probe/token-move.mjs",
+      "find": "      ? new HttpsAgent({ keepAlive: true, maxSockets: 1 })",
+      "replace": "      ? new HttpsAgent({ keepAlive: true, maxSockets: 1, lookup: () => '127.0.0.1' })",
+      "expectCode": "region-changed:fn.tokenMove.checkBotToken"
+    },
+    {
+      "id": "predicted.rebind-clearTimeout",
+      "file": "src/api.mjs",
+      "find": "  return Promise.race([promise, gate]).finally(() => {\n    if (timer) clearTimeout(timer);\n  });\n}",
+      "replace": "  return Promise.race([promise, gate]).finally(() => {\n    if (timer) clearTimeout(timer);\n  });\n}\nconst clearTimeout = () => {};",
+      "expectCode": "census:clearTimeout:src/api.mjs:"
+    },
+    {
+      "id": "predicted.rebind-joinUrl",
+      "file": "src/discord/client.mjs",
+      "find": "export function snowflakeTime(id) {\n  return Number((BigInt(id) >> 22n) + 1420070400000n);\n}",
+      "replace": "export function snowflakeTime(id) {\n  return Number((BigInt(id) >> 22n) + 1420070400000n);\n}\njoinUrl = () => 'https://example.invalid';",
+      "expectCode": "census:joinUrl:src/discord/client.mjs:"
+    },
+    {
+      "id": "control.setInterval",
+      "file": "src/extension.mjs",
+      "find": "    intake?.resetSession('');\n    releaseSlot();\n  });\n\n  return runtime;\n}",
+      "replace": "    intake?.resetSession('');\n    releaseSlot();\n  });\n\n  return runtime;\n}\nsetInterval(() => {}, 1000);",
+      "expectCode": "census:setInterval:src/extension.mjs:"
+    },
+    {
+      "id": "control.globalThis-extra",
+      "file": "src/extension.mjs",
+      "find": "    intake?.resetSession('');\n    releaseSlot();\n  });\n\n  return runtime;\n}",
+      "replace": "    intake?.resetSession('');\n    releaseSlot();\n  });\n\n  return runtime;\n}\nglobalThis.__task13_extra = true;",
+      "expectCode": "census:globalThis:src/extension.mjs:"
+    },
+    {
+      "id": "control.promise-rebind",
+      "file": "src/api.mjs",
+      "find": "  return Promise.race([promise, gate]).finally(() => {\n    if (timer) clearTimeout(timer);\n  });\n}",
+      "replace": "  return Promise.race([promise, gate]).finally(() => {\n    if (timer) clearTimeout(timer);\n  });\n}\nPromise = null;",
+      "expectCode": "census:Promise:src/api.mjs:"
+    },
+    {
+      "id": "control.dynamic-import",
+      "file": "bin/memento.mjs",
+      "find": "if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {\n  const code = await main(process.argv.slice(2));\n  process.exitCode = code;\n}",
+      "replace": "if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {\n  const code = await main(process.argv.slice(2));\n  process.exitCode = code;\n}\nawait import('node:http');",
+      "expectCode": "census:import(:bin/memento.mjs:"
+    },
+    {
+      "id": "control.specifier",
+      "file": "src/discord/client.mjs",
+      "find": "export function snowflakeTime(id) {\n  return Number((BigInt(id) >> 22n) + 1420070400000n);\n}",
+      "replace": "export function snowflakeTime(id) {\n  return Number((BigInt(id) >> 22n) + 1420070400000n);\n}\nimport { request } from 'node:http';",
+      "expectCode": "census:node:http:src/discord/client.mjs:"
+    },
+    {
+      "id": "control.new-url",
+      "file": "src/discord/client.mjs",
+      "find": "export function snowflakeTime(id) {\n  return Number((BigInt(id) >> 22n) + 1420070400000n);\n}",
+      "replace": "export function snowflakeTime(id) {\n  return Number((BigInt(id) >> 22n) + 1420070400000n);\n}\nconst evil = new URL('https://example.invalid');",
+      "expectCode": "census:URL:src/discord/client.mjs:"
+    },
+    {
+      "id": "control.fetch",
+      "file": "src/discord/client.mjs",
+      "find": "export function snowflakeTime(id) {\n  return Number((BigInt(id) >> 22n) + 1420070400000n);\n}",
+      "replace": "export function snowflakeTime(id) {\n  return Number((BigInt(id) >> 22n) + 1420070400000n);\n}\nfetch('https://example.invalid');",
+      "expectCode": "census:fetch:src/discord/client.mjs:"
+    },
+    {
+      "id": "producer.target-port",
+      "file": "src/discord/client.mjs",
+      "find": "target = new URL(url);",
+      "replace": "target = new URL(url);\n        target.port = \"443\";",
+      "expectCode": "region-changed:fn.client.requestOnce"
+    },
+    {
+      "id": "attempt4.foreign-pin-status-url",
+      "priorCase": "attempt-4 reviewer B2 foreign-file coordinate counterexample",
+      "file": "src/card/status.mjs",
+      "find": "export function statusFromLabel(label) {\n  return LABEL_TO_STATUS.get(label) ?? null;\n}\n",
+      "replace": "export function statusFromLabel(label) {\n  return LABEL_TO_STATUS.get(label) ?? null;\n}\n\nglobalThis.URL = class extends URL {\n  constructor(...args) {\n    super(...args);\n    this.hostname = \"example.invalid\";\n  }\n};",
+      "expectCode": "census:globalThis:src/card/status.mjs:"
+    },
+    {
+      "id": "attempt4.foreign-pin-status-specifier",
+      "priorCase": "attempt-4 reviewer B2 foreign-file specifier counterexample",
+      "file": "src/card/status.mjs",
+      "find": "export function statusFromLabel(label) {\n  return LABEL_TO_STATUS.get(label) ?? null;\n}\n",
+      "replace": "export function statusFromLabel(label) {\n  return LABEL_TO_STATUS.get(label) ?? null;\n}\n\nimport { request } from 'node:http';\n",
+      "expectCode": "census:node:http:src/card/status.mjs:"
+    },
+    {
+      "id": "attempt4.dispose-control-wrapper",
+      "priorCase": "attempt-4 reviewer B1 dispose control-flow counterexample",
+      "file": "src/sync/run.mjs",
+      "find": "    } finally {\n      discordDeadline.dispose();\n      await release(lock);\n    }",
+      "replace": "    } finally {\n      if (false) {\n      discordDeadline.dispose();\n      }\n      await release(lock);\n    }",
+      "expectCode": "body:line.sync.dispose"
+    },
+    {
+      "id": "attempt4.promise-member-write",
+      "priorCase": "attempt-4 reviewer B1 Promise member-write counterexample",
+      "file": "src/api.mjs",
+      "find": "  return Promise.race([promise, gate]).finally(() => {\n    if (timer) clearTimeout(timer);\n  });\n}",
+      "replace": "  return Promise.race([promise, gate]).finally(() => {\n    if (timer) clearTimeout(timer);\n  });\n}\nPromise.race = (values) => Promise.resolve(values[0]);",
+      "expectCode": "census:Promise:src/api.mjs:"
+    },
+    {
+      "id": "control.promise-member-compound",
+      "priorCase": null,
+      "file": "src/api.mjs",
+      "find": "  return Promise.race([promise, gate]).finally(() => {\n    if (timer) clearTimeout(timer);\n  });\n}",
+      "replace": "  return Promise.race([promise, gate]).finally(() => {\n    if (timer) clearTimeout(timer);\n  });\n}\nPromise.race ||= (values) => values[0];",
+      "expectCode": "census:Promise:src/api.mjs:"
+    },
+    {
+      "id": "control.promise-member-computed",
+      "priorCase": null,
+      "file": "src/api.mjs",
+      "find": "  return Promise.race([promise, gate]).finally(() => {\n    if (timer) clearTimeout(timer);\n  });\n}",
+      "replace": "  return Promise.race([promise, gate]).finally(() => {\n    if (timer) clearTimeout(timer);\n  });\n}\nPromise['race'] = (values) => values[0];",
+      "expectCode": "census:Promise:src/api.mjs:"
+    },
+    {
+      "id": "control.promise-member-increment",
+      "priorCase": null,
+      "file": "src/api.mjs",
+      "find": "  return Promise.race([promise, gate]).finally(() => {\n    if (timer) clearTimeout(timer);\n  });\n}",
+      "replace": "  return Promise.race([promise, gate]).finally(() => {\n    if (timer) clearTimeout(timer);\n  });\n}\nPromise.race++;",
+      "expectCode": "census:Promise:src/api.mjs:"
+    },
+    {
+      "id": "control.abortsignal-member-write",
+      "priorCase": null,
+      "file": "src/api.mjs",
+      "find": "  return Promise.race([promise, gate]).finally(() => {\n    if (timer) clearTimeout(timer);\n  });\n}",
+      "replace": "  return Promise.race([promise, gate]).finally(() => {\n    if (timer) clearTimeout(timer);\n  });\n}\nAbortSignal.timeout = () => null;",
+      "expectCode": "census:AbortSignal:src/api.mjs:"
+    },
+    {
+      "id": "control.line-owner-sleep-wrapper",
+      "priorCase": null,
+      "file": "src/probe/probe-owner.mjs",
+      "find": "    if (index < auditReads - 1) await ctx.sleep(intervalMs);",
+      "replace": "    if (false) {\n    if (index < auditReads - 1) await ctx.sleep(intervalMs);\n    }",
+      "expectCode": "control:line.owner.sleep-a"
+    },
+    {
+      "id": "control.line-setup-sleep-wrapper",
+      "priorCase": null,
+      "file": "src/probe/probe-setup.mjs",
+      "find": "    if (index < (options.auditReads ?? 3) - 1) await ctx.sleep(options.auditIntervalMs ?? 20_000);",
+      "replace": "    if (false) {\n    if (index < (options.auditReads ?? 3) - 1) await ctx.sleep(options.auditIntervalMs ?? 20_000);\n    }",
+      "expectCode": "control:line.setup.sleep-a"
+    },
+    {
+      "id": "control.line-client-baseUrl-wrapper",
+      "priorCase": null,
+      "file": "src/discord/client.mjs",
+      "find": "  const baseUrl = options.baseUrl ?? DEFAULT_BASE_URL;",
+      "replace": "  if (false) {\n  const baseUrl = options.baseUrl ?? DEFAULT_BASE_URL;\n  }",
+      "expectCode": "control:line.client.baseUrl-alias"
+    },
+    {
+      "id": "control.line-fake-handle-url-wrapper",
+      "priorCase": null,
+      "file": "src/discord/fake-server.mjs",
+      "find": "    const url = new URL(request.url, 'http://127.0.0.1');",
+      "replace": "    if (false) {\n    const url = new URL(request.url, 'http://127.0.0.1');\n    }",
+      "expectCode": "control:line.fake.handle-url"
+    },
+    {
+      "id": "control.line-sync-baseUrl-wrapper",
+      "priorCase": null,
+      "file": "src/sync/run.mjs",
+      "find": "  if (!client) {\n    client = createDiscordClient({\n      tokenFile: config.tokenFile,\n      ...(config.baseUrl ? { baseUrl: config.baseUrl } : {}),\n      clock: { now },\n    });\n  }",
+      "replace": "  if (false) {\n  if (!client) {\n    client = createDiscordClient({\n      tokenFile: config.tokenFile,\n      ...(config.baseUrl ? { baseUrl: config.baseUrl } : {}),\n      clock: { now },\n    });\n  }\n  }",
+      "expectCode": "control:line.sync.baseUrl-config"
+    },
+    {
+      "id": "attempt5.dispose-return-gate",
+      "priorCase": "attempt-5 reviewer B1 cleanup early-return gate",
+      "file": "src/sync/run.mjs",
+      "find": "    } finally {\n      discordDeadline.dispose();\n      await release(lock);\n    }",
+      "replace": "    } finally {\n      return last;\n      discordDeadline.dispose();\n      await release(lock);\n    }",
+      "expectCode": "body:line.sync.dispose"
+    },
+    {
+      "id": "attempt5.promise-definegetter",
+      "priorCase": "attempt-5 reviewer B1 global member-call gate",
+      "file": "src/card/status.mjs",
+      "find": "export function statusFromLabel(label) {\n  return LABEL_TO_STATUS.get(label) ?? null;\n}\n",
+      "replace": "export function statusFromLabel(label) {\n  return LABEL_TO_STATUS.get(label) ?? null;\n}\n\nPromise.__defineGetter__(\"race\", () => (values) => values[0]);\n",
+      "expectCode": "census:Promise:src/card/status.mjs:"
+    },
+    {
+      "id": "attempt5.object-defineproperty",
+      "priorCase": "attempt-5 same-class Object mutator sibling",
+      "file": "src/card/status.mjs",
+      "find": "export function statusFromLabel(label) {\n  return LABEL_TO_STATUS.get(label) ?? null;\n}\n",
+      "replace": "export function statusFromLabel(label) {\n  return LABEL_TO_STATUS.get(label) ?? null;\n}\n\nObject.defineProperty(Promise, \"race\", { value: (values) => values[0] });\n",
+      "expectCode": "census:Promise:src/card/status.mjs:"
+    },
+    {
+      "id": "attempt5.reflect-defineproperty",
+      "priorCase": "attempt-5 same-class Reflect mutator sibling",
+      "file": "src/card/status.mjs",
+      "find": "export function statusFromLabel(label) {\n  return LABEL_TO_STATUS.get(label) ?? null;\n}\n",
+      "replace": "export function statusFromLabel(label) {\n  return LABEL_TO_STATUS.get(label) ?? null;\n}\n\nReflect.defineProperty(Promise, \"race\", { value: (values) => values[0] });\n",
+      "expectCode": "census:Reflect:src/card/status.mjs:"
+    },
+    {
+      "id": "attempt7.comment-body-decoy-gate",
+      "priorCase": "attempt-6 reviewer B1 comment-decoy association gate",
+      "file": "src/sync/run.mjs",
+      "find": "    } finally {\n      discordDeadline.dispose();\n      await release(lock);\n    }",
+      "replace": "    } finally {\n      return last;\n      discordDeadline.dispose();\n      await release(lock);\n    }\n/*\n    runs += 1;\n    const discordDeadline = createDeadline(Math.max(1, Math.min(budget.discordMs, deadlines.discord - now())));\n    try {\n      last = await runPass({ ...context, discordDeadline });\n    } finally {\n      discordDeadline.dispose();\n      await release(lock);\n    }\n*/",
+      "expectCode": "body:line.sync.dispose"
+    },
+    {
+      "id": "attempt7.string-body-decoy-gate",
+      "priorCase": "attempt-6 same-class string decoy",
+      "file": "src/sync/run.mjs",
+      "find": "    } finally {\n      discordDeadline.dispose();\n      await release(lock);\n    }",
+      "replace": "    } finally {\n      return last;\n      discordDeadline.dispose();\n      await release(lock);\n    }\nconst bodyDecoy = `    runs += 1;\n    const discordDeadline = createDeadline(Math.max(1, Math.min(budget.discordMs, deadlines.discord - now())));\n    try {\n      last = await runPass({ ...context, discordDeadline });\n    } finally {\n      discordDeadline.dispose();\n      await release(lock);\n    }`;",
+      "expectCode": "body:line.sync.dispose"
+    },
+    {
+      "id": "attempt7.unrelated-body-decoy-gate",
+      "priorCase": "attempt-6 same-class unrelated-function decoy",
+      "file": "src/sync/run.mjs",
+      "find": "    } finally {\n      discordDeadline.dispose();\n      await release(lock);\n    }",
+      "replace": "    } finally {\n      return last;\n      discordDeadline.dispose();\n      await release(lock);\n    }\nfunction bodyDecoy() {\n    runs += 1;\n    const discordDeadline = createDeadline(Math.max(1, Math.min(budget.discordMs, deadlines.discord - now())));\n    try {\n      last = await runPass({ ...context, discordDeadline });\n    } finally {\n      discordDeadline.dispose();\n      await release(lock);\n    }\n}",
+      "expectCode": "body:line.sync.dispose"
+    }
+  ]
+}
