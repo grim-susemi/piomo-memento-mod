@@ -640,6 +640,19 @@ async function runPass(context) {
     return updated ?? card;
   };
 
+  // A board pick the log shows already lost to an owner-race conflict (an owner phone value was
+  // restored after it) must not resolve that conflict again on a later quiet sync.
+  const RACE_REASONS = new Set(['owner-race', 'recent-write-owner-race']);
+  const boardEventsFor = (card) => {
+    const events = boardEventsOf(card, state, uncertaintyFor(state.clock));
+    const last = events.at(-1);
+    if (last?.resolves) {
+      const pick = card.log.findLastIndex((entry) => entry.actor === 'owner' && entry.via === 'board');
+      const raced = card.log.findLastIndex((entry) => entry.change === 'conflict' && RACE_REASONS.has(entry.reason));
+      if (raced > pick) delete last.resolves;
+    }
+    return events;
+  };
   const decide = (card, remoteStatuses, cardEntries) => {
     const since = conflictBoundary(card);
     return reconcile({
@@ -647,7 +660,7 @@ async function runPass(context) {
         status: card.status,
         discordBase: card.discordBase,
         discordState: card.discordState,
-        boardEvents: boardEventsOf(card, state, uncertaintyFor(state.clock)),
+        boardEvents: boardEventsFor(card),
         ...(since === null ? {} : { conflictSince: since }),
       },
       remote: { exists: true, statusTags: remoteStatuses },
@@ -657,6 +670,12 @@ async function runPass(context) {
   const entriesForCard = (card, threadId) =>
     auditEntriesFor(entries, threadId, Date.parse(state.bases[card.id] ?? card.created));
 
+  // A card already in conflict keeps its candidates (e.g. a raced owner value); reconcile adds the
+  // remote values to them instead of replacing them, so no owner value drops out silently.
+  const conflictCandidates = (card, statuses) => card.discordState === 'conflict'
+    && Array.isArray(card.conflictDiscord)
+    ? [...card.conflictDiscord, ...statuses]
+    : statuses;
   const applyDecision = async (card, decision, remoteStatuses) => {
     if (decision.kind === 'setBase') return applyBase(card, decision.status);
     if (decision.kind === 'take') {
@@ -665,7 +684,7 @@ async function runPass(context) {
     if (decision.kind === 'markDeleted') return applyDeleted(card);
     if (decision.kind === 'invalidRemote') {
       if (card.discordState === 'conflict') {
-        return applyConflict(card, remoteStatuses, 'conflict-remote-invalid');
+        return applyConflict(card, conflictCandidates(card, remoteStatuses), 'conflict-remote-invalid');
       }
       return applyInvalid(card, remoteStatuses);
     }
@@ -673,7 +692,7 @@ async function runPass(context) {
       if (card.discordState === 'conflict' && decision.reason === 'unresolved-conflict') {
         return card;
       }
-      return applyConflict(card, remoteStatuses, decision.reason ?? 'conflict');
+      return applyConflict(card, conflictCandidates(card, remoteStatuses), decision.reason ?? 'conflict');
     }
     return card;
   };
@@ -1719,11 +1738,66 @@ async function verifyRecentWrites({
       && entry.targetId === write.thread
       && entry.time >= t0
       && entry.time <= patchAt + 1_000);
-    if (unknown.length > 0) {
+    const anchor = write.eventId
+      ? (card.log ?? []).findIndex((event) => event.eventId === write.eventId)
+      : -1;
+    const logSuperseded = (card.log ?? []).some((event, index) => event.actor === 'owner'
+      && event.change === 'status'
+      && (anchor < 0 || index > anchor)
+      && Date.parse(event.at) > patchAt + 2_000 + uncertaintyFor(state.clock));
+    const laterOwnerVisible = window.some((entry) => entry.actor === 'owner'
+      && entry.targetId === write.thread && entry.time > patchAt + 1_000);
+    if (unknown.length > 0 && owners.length === 0) {
       record(receipts, {
         event: 'recent-write-uncertain', id: write.cardId, key: write.key,
         code: 'unknown-actor',
       });
+      keep.push(write);
+      continue;
+    }
+    if (unknown.length > 0 && !logSuperseded && !laterOwnerVisible) {
+      // An owner entry and an unknown actor's entry both sit in the window, and no later owner
+      // change exists. Neither value may vanish silently (plan line 70: unknown -> conflict;
+      // line 73: owner entry in the window -> conflict). Show both as conflict candidates and
+      // never PATCH over the unknown actor's value. Zero or 2+ status tags are left to reconcile.
+      if (!touchBudget()) {
+        keep.push(write);
+        continue;
+      }
+      const fresh = await client.getThread(write.thread, { signal });
+      measure(fresh);
+      if (!fresh.ok) {
+        keep.push(write);
+        continue;
+      }
+      const shown = singleStatus(statusesOf(fresh.data?.applied_tags ?? [], state.tagIds));
+      if (shown === null) {
+        keep.push(write);
+        continue;
+      }
+      const freshCard = await store.get(write.cardId);
+      if (!freshCard.ok) {
+        keep.push(write);
+        continue;
+      }
+      const ownerValues = owners
+        .map((entry) => singleStatus(statusesOf(entry.toTags ?? [], state.tagIds)))
+        .filter(Boolean);
+      const earlier = freshCard.card.discordState === 'conflict' && Array.isArray(freshCard.card.conflictDiscord)
+        ? freshCard.card.conflictDiscord
+        : [];
+      const conflicted = await applyConflict(
+        freshCard.card, [...earlier, ...ownerValues, shown, freshCard.card.status], 'recent-write-owner-race',
+      );
+      if (!ownerValues.every((value) => conflicted?.conflictDiscord?.includes(value))) {
+        keep.push(write);
+        continue;
+      }
+      if (now() - t0 > AUDIT_RETENTION_MS) {
+        record(receipts, { event: 'audit-expired', id: card.id, key: write.key });
+        actions.expired += 1;
+        continue;
+      }
       keep.push(write);
       continue;
     }
@@ -1788,13 +1862,7 @@ async function verifyRecentWrites({
     }
     // A later owner status event in the card log supersedes this write (plan IS-2: the
     // later owner change wins). Retire it without any restore.
-    const anchor = write.eventId
-      ? (card.log ?? []).findIndex((event) => event.eventId === write.eventId)
-      : -1;
-    if ((card.log ?? []).some((event, index) => event.actor === 'owner'
-      && event.change === 'status'
-      && (anchor < 0 || index > anchor)
-      && Date.parse(event.at) > patchAt + 2_000 + uncertaintyFor(state.clock))) {
+    if (logSuperseded) {
       record(receipts, {
         event: 'recent-write-superseded', id: write.cardId, key: write.key, source: 'card-log',
       });
