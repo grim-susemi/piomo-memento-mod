@@ -36,10 +36,12 @@ Commands:
                                        check the Discord bot, or prove the UTF-8
                                        card round trip through a real write, commit,
                                        clone, API read and fake Discord post.
-  sync [--repo <dir>] [--discord-base <url>] [--pid-log <file>]
+  sync [--repo <dir>] [--discord-base <url>] [--pid-log <file>] [--dry-run]
                                        Run one session-start sync. Without --repo the
                                        configured repo is used; the loopback fake URL
-                                       and child PID log are QA-only options.
+                                       and child PID log are QA-only options. --dry-run
+                                       inspects the same reconciliation read-only and
+                                       reports the actions a real sync would take.
   wiki-scan --root <dir> --out <dir>   Scan the old wiki read-only: hash every file,
                                        list at most 50 ranked candidates and the
                                        broken-Korean exclusions outside the wiki.
@@ -70,6 +72,8 @@ Options:
   --repo <dir>              sync: data repository to use instead of the configured one.
   --discord-base <url>      sync: Discord API base URL (loopback fake for QA).
   --pid-log <file>          sync: write each child spawn/exit event as JSONL.
+  --dry-run                 sync: report planned actions without any Discord write,
+                            card, state, git or receipt change.
   --base-url <url>          Discord API base URL for --discord (default https://discord.com/api/v10).
   --root <dir>              Wiki root for wiki-scan (read-only).
   --out <dir>               Output directory for wiki-scan or probe; wiki-scan refuses an
@@ -92,6 +96,12 @@ Options:
   --git <repo>              leak-scan git repository (repeatable).
   --also <file>             leak-scan extra strings file, one string per line.
   --help                    Show this help.
+
+Environment:
+  MEMENTO_TEST_CRASH_AFTER_CREATE=1
+                            QA only: sync exits (70) right after one successful Discord
+                            create response and before saving the post link. Any other
+                            value, or an unset variable, leaves sync unchanged.
 
 Exit codes: 0 ok, 1 check or output failed, 2 unreadable or bad usage, 3 parse/client/scanner unavailable.
 `;
@@ -615,6 +625,8 @@ async function runWikiImportCommand(values) {
 }
 
 async function runSyncCommand(values) {
+  const dryRun = values['dry-run'] === true;
+  const crashAfterCreate = process.env.MEMENTO_TEST_CRASH_AFTER_CREATE === '1';
   if (values.repo !== undefined && values.repo.length === 0) {
     console.error('sync: --repo needs a directory');
     return 2;
@@ -625,6 +637,10 @@ async function runSyncCommand(values) {
   }
   if (values['pid-log'] !== undefined && values['pid-log'].length === 0) {
     console.error('sync: --pid-log needs a file');
+    return 2;
+  }
+  if (dryRun && values['pid-log'] !== undefined) {
+    console.error('sync: --dry-run cannot write --pid-log');
     return 2;
   }
   if (!existsSync(SYNC)) {
@@ -640,29 +656,50 @@ async function runSyncCommand(values) {
   let pidError = null;
   try {
     if (repoArg) {
+      const liveConfig = dryRun ? loadConfig() : null;
       if (discordBase !== undefined
         && !/^http:\/\/(?:127\.0\.0\.1|localhost):\d+\/api\/v10$/.test(discordBase)
-        && !values['token-file']) {
+        && !values['token-file']
+        && liveConfig?.state !== 'configured') {
         console.error('sync: --token-file is required when --discord-base is not a loopback fake');
         return 2;
       }
-      tempRoot = await mkdtemp(join(tmpdir(), 'memento-sync-cli-'));
-      const tokenFile = values['token-file']
-        ? resolve(values['token-file'])
-        : join(tempRoot, 'discord-token');
-      if (!values['token-file']) {
-        await writeFile(tokenFile, 'synthetic-discord-token\n', 'utf8');
+      if (dryRun) {
+        const base = liveConfig?.state === 'configured' ? liveConfig : null;
+        const tokenFile = values['token-file']
+          ? resolve(values['token-file'])
+          : (base ? base.tokenFile : null);
+        const agentDir = values['agent-dir']
+          ? resolve(values['agent-dir'])
+          : (base ? base.agentDir : join(tmpdir(), 'memento-dry-run-agent'));
+        config = {
+          state: 'configured',
+          reason: '',
+          agentDir,
+          configPath: join(agentDir, 'memento', 'config.json'),
+          repoPath: repoArg,
+          tokenFile,
+          remote: base ? base.remote : null,
+        };
+      } else {
+        tempRoot = await mkdtemp(join(tmpdir(), 'memento-sync-cli-'));
+        const tokenFile = values['token-file']
+          ? resolve(values['token-file'])
+          : join(tempRoot, 'discord-token');
+        if (!values['token-file']) {
+          await writeFile(tokenFile, 'synthetic-discord-token\n', 'utf8');
+        }
+        const agentDir = values['agent-dir'] ? resolve(values['agent-dir']) : join(tempRoot, 'agent');
+        config = {
+          state: 'configured',
+          reason: '',
+          agentDir,
+          configPath: join(agentDir, 'memento', 'config.json'),
+          repoPath: repoArg,
+          tokenFile,
+          remote: null,
+        };
       }
-      const agentDir = values['agent-dir'] ? resolve(values['agent-dir']) : join(tempRoot, 'agent');
-      config = {
-        state: 'configured',
-        reason: '',
-        agentDir,
-        configPath: join(agentDir, 'memento', 'config.json'),
-        repoPath: repoArg,
-        tokenFile,
-        remote: null,
-      };
     } else {
       config = loadConfig();
       if (config.state !== 'configured') {
@@ -691,15 +728,36 @@ async function runSyncCommand(values) {
       tokenFile: config.tokenFile,
       ...(discordBase ? { baseUrl: discordBase } : {}),
     });
+    const hooks = crashAfterCreate && !dryRun
+      ? { barrier(name) { if (name === 'after-create-response') process.exit(70); } }
+      : undefined;
     const result = await runSync({
       reason: 'command',
       config,
       client,
-      receipts: createReceipts({ agentDir: config.agentDir }),
+      receipts: dryRun ? null : createReceipts({ agentDir: config.agentDir }),
+      ...(dryRun ? { dryRun: true } : {}),
+      ...(hooks ? { hooks } : {}),
     });
     if (pidError) {
       console.error(`sync: pid-log write failed (${pidError})`);
       return 1;
+    }
+    if (dryRun) {
+      const a = result.actions ?? {};
+      const planned = (a.imported ?? 0) + (a.adopted ?? 0) + (a.linked ?? 0)
+        + (a.posted ?? 0) + (a.pushed ?? 0) + (a.taken ?? 0) + (a.base ?? 0)
+        + (a.conflicts ?? 0) + (a.invalid ?? 0) + (a.deleted ?? 0)
+        + (a.edits ?? 0) + (a.expired ?? 0);
+      console.log(`sync: dry-run ${result.complete ? 'ok' : 'incomplete'} cards ${result.inspected?.cards ?? 0} linked ${result.inspected?.linked ?? 0} planned ${planned}`);
+      console.log(`sync: dry-run actions imported ${a.imported ?? 0} adopted ${a.adopted ?? 0} linked ${a.linked ?? 0} posted ${a.posted ?? 0} pushed ${a.pushed ?? 0} taken ${a.taken ?? 0} base ${a.base ?? 0} conflicts ${a.conflicts ?? 0} invalid ${a.invalid ?? 0} deleted ${a.deleted ?? 0} edits ${a.edits ?? 0} expired ${a.expired ?? 0} failures ${a.failures ?? 0}`);
+      if (!result.complete) {
+        const why = Array.isArray(result.incomplete) && result.incomplete.length > 0
+          ? result.incomplete.join(',')
+          : (result.discord ?? result.skipped ?? result.reason ?? 'incomplete');
+        console.log(`sync: dry-run stopped (${why})`);
+      }
+      return result.complete ? 0 : 1;
     }
     if (result.ok) {
       console.log(`sync: ok runs ${result.runs ?? 0} discord ${result.discord ?? 'unknown'} push ${result.push ?? 'unknown'}`);
@@ -732,6 +790,7 @@ async function main(argv) {
         repo: { type: 'string' },
         'discord-base': { type: 'string' },
         'pid-log': { type: 'string' },
+        'dry-run': { type: 'boolean' },
         'base-url': { type: 'string' },
         root: { type: 'string' },
         out: { type: 'string' },
@@ -816,6 +875,10 @@ async function main(argv) {
   }
   if (values['pid-log'] !== undefined && command !== 'sync') {
     console.error('--pid-log needs sync');
+    return 2;
+  }
+  if (values['dry-run'] && command !== 'sync') {
+    console.error('--dry-run needs sync');
     return 2;
   }
   if (values['token-file'] !== undefined && command !== 'leak-scan' && command !== 'sync') {

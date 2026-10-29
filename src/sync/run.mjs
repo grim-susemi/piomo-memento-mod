@@ -94,6 +94,28 @@ function gateClient(client, { now, deadline, signal, deadlineSignal, onBudget })
   return wrapped;
 }
 
+/**
+ * Dry-run client: reads are forwarded unchanged; every Discord write is answered
+ * with the success envelope the planner already handles. The synthetic create id
+ * never reaches a card, so the same sync flow computes the would-be actions while
+ * the repo, git and Discord stay untouched.
+ */
+function guardReadOnlyClient(client) {
+  if (!client) return client;
+  let synthetic = 0;
+  const simulated = (data) => ({
+    ok: true, status: 200, data, headers: {}, date: null,
+    sentAt: null, receivedAt: null, attempts: 0,
+  });
+  return {
+    ...client,
+    patchThreadTags: async (params) => simulated({ applied_tags: [...(params?.appliedTags ?? [])] }),
+    createForumPost: async () => simulated({ id: `dry-run-${(synthetic += 1)}` }),
+    archiveThread: async () => simulated({}),
+    deleteThread: async () => simulated({}),
+  };
+}
+
 
 function emptyActions() {
   return {
@@ -168,14 +190,23 @@ export async function runSync(options = {}) {
   const now = options.now ?? Date.now;
   const startedAt = now();
   const config = options.config;
-  const receipts = options.receipts;
+  const dryRun = options.dryRun === true;
+  const receipts = dryRun ? null : options.receipts;
   const signal = options.signal;
+  const dryResult = (result) => (dryRun
+    ? {
+      ...result,
+      dryRun: true,
+      complete: false,
+      incomplete: [result.skipped ?? result.reason ?? 'unavailable'],
+    }
+    : result);
   if (!config || config.state !== 'configured') {
     record(receipts, { event: 'sync-skipped', reason: 'unconfigured' });
-    return {
+    return dryResult({
       ok: false, reason, skipped: 'unconfigured', actions: emptyActions(), runs: 0,
       discord: 'unconfigured', push: 'skipped', notify: null, waitingForPush: false,
-    };
+    });
   }
   const store = options.store ?? openStore(config.repoPath, { now });
   const budget = { ...BUDGETS, ...(options.budget ?? {}) };
@@ -183,18 +214,43 @@ export async function runSync(options = {}) {
   const preflight = await store.readSyncState();
   if (!preflight.ok) {
     record(receipts, { event: 'sync-skipped', reason: 'repo-uninitialized', code: preflight.code });
-    return {
+    return dryResult({
       ok: false, reason, skipped: 'repo-uninitialized', actions: emptyActions(), runs: 0,
       discord: 'skipped', push: 'skipped', notify: null, waitingForPush: false,
-    };
+    });
   }
   const context = {
     reason, now, config, store, receipts, signal, budget, deadlines,
     ctx: options.ctx,
     client: options.client,
-    hooks: options.hooks ?? {},
+    hooks: dryRun ? {} : (options.hooks ?? {}),
     emptySyncState: options.emptySyncState,
+    dryRun,
   };
+
+  if (dryRun) {
+    const discordDeadline = createDeadline(Math.max(1, Math.min(budget.discordMs, deadlines.discord - now())));
+    const dryRunIncomplete = [];
+    let result;
+    try {
+      result = await runPass({ ...context, discordDeadline, dryRunIncomplete });
+    } finally {
+      discordDeadline.dispose();
+    }
+    const listed = await store.list();
+    return {
+      ...result,
+      runs: 1,
+      dryRun: true,
+      complete: result.ok === true && result.discord === 'ok' && dryRunIncomplete.length === 0,
+      incomplete: [...dryRunIncomplete],
+      inspected: {
+        cards: listed.cards.length,
+        linked: listed.cards.filter((card) => typeof card.discordThread === 'string'
+          && card.discordThread.length > 0).length,
+      },
+    };
+  }
 
   let runs = 0;
   let last = null;
@@ -236,6 +292,7 @@ export async function runSync(options = {}) {
 async function runPass(context) {
   const {
     reason, now, config, store, receipts, signal, budget, deadlines, ctx, hooks, discordDeadline,
+    dryRun, dryRunIncomplete,
   } = context;
   const actions = emptyActions();
   record(receipts, { event: 'sync-start', reason });
@@ -257,6 +314,7 @@ async function runPass(context) {
   const stateSnapshot = structuredClone(state);
   let baseline = stateSnapshot;
   const transactState = async () => {
+    if (dryRun) return { ok: true, state: structuredClone(state) };
     const result = await store.transactSyncState(
       (latest) => mergeSyncState(baseline, state, latest),
       { waitMs: 1_000, message: 'memento: sync state\n' },
@@ -293,6 +351,7 @@ async function runPass(context) {
   };
 
   const pushNow = async (label) => {
+    if (dryRun) return config.remote ? 'dry-run' : 'no-remote';
     if (!config.remote) {
       record(receipts, { event: 'push-skipped', label, reason: 'no-remote' });
       return 'no-remote';
@@ -356,6 +415,7 @@ async function runPass(context) {
     deadlineSignal: discordDeadline?.signal,
     onBudget: () => { budgetHit = true; },
   });
+  if (dryRun) client = guardReadOnlyClient(client);
 
   const me = await client.getMe({ signal });
   measure(me);
@@ -426,6 +486,11 @@ async function runPass(context) {
     ? await client.listArchivedForumThreads(state.forumId, { signal })
     : null;
   measure(archived);
+  // Dry run only: a missing archived listing can hide an orphan, a link or an edit,
+  // so an authoritative zero is impossible. Live sync keeps its nonfatal policy.
+  if (dryRun && (!archived || !archived.ok)) {
+    dryRunIncomplete.push(`archived-list:${archived ? (archived.status ?? archived.error ?? 'unknown') : 'budget'}`);
+  }
   const threads = new Map();
   for (const thread of active.data ?? []) threads.set(thread.id, thread);
   if (archived?.ok) for (const thread of archived.data ?? []) threads.set(thread.id, thread);
@@ -448,6 +513,11 @@ async function runPass(context) {
   for (const card of cards.values()) if (card.discordThread) linkedThreadIds.add(card.discordThread);
 
   const audit = await ingestAudit({ client, state, now, signal, receipts, discordOpen: touchBudget });
+  // A successful read with an aged cursor is a truthful partial window; only a
+  // failed or skipped audit read makes the dry-run plan incomplete.
+  if (dryRun && !audit.ok) {
+    dryRunIncomplete.push(`audit-read:${audit.code ?? 'unknown'}`);
+  }
   if (audit.fatal) {
     if (budgetHit) {
       return finalize({
@@ -465,6 +535,21 @@ async function runPass(context) {
   const entries = (audit.raw ?? []).map(mapTagEntry).filter(Boolean);
 
   const persistCard = async (card, mutate, log) => {
+    if (dryRun) {
+      const at = iso(now());
+      const entries = (Array.isArray(log) ? log : [log])
+        .filter((entry) => entry && typeof entry === 'object');
+      const next = structuredClone(card);
+      const mutated = mutate(next) ?? next;
+      mutated.rev = card.rev + 1;
+      mutated.updated = at;
+      mutated.log = [
+        ...(card.log ?? []),
+        ...entries.map((entry) => ({ at, eventId: randomUUID(), ...entry })),
+      ];
+      cards.set(mutated.id, mutated);
+      return mutated;
+    }
     const result = await store.update(card.id, { expectRev: card.rev, mutate, log });
     if (!result.ok) {
       actions.failures += 1;
@@ -836,6 +921,12 @@ async function runPass(context) {
     const statuses = statusesOf(thread.applied_tags, state.tagIds);
     const status = singleStatus(statuses) ?? 'idea';
     const cut = normalized.endsWith('…(잘림)');
+    if (dryRun) {
+      actions.adopted += 1;
+      actions.adoptedIds.push(marker.cardId);
+      if (statuses.length !== 1) actions.conflicts += 1;
+      return;
+    }
     const created = await store.create({
       id: marker.cardId,
       title,
@@ -894,6 +985,12 @@ async function runPass(context) {
     }
     const id = idForThread(state.guildId, thread.id);
     if (cards.has(id)) return null;
+    if (dryRun) {
+      actions.imported += 1;
+      if (statuses.length >= 2) actions.conflicts += 1;
+      if (statuses.length === 0) actions.pushed += 1;
+      return null;
+    }
     const created = await store.create({
       id,
       title,
@@ -1118,7 +1215,7 @@ async function runPass(context) {
     }, { signal });
     measure(read);
     if (!read.ok) return { uncertain: read.status ?? read.error ?? 'audit-read-failed' };
-    if ((read.data ?? []).length >= 100) return { uncertain: 'audit-incomplete' };
+    if (read.meta.pages > 1_000) return { uncertain: 'audit-incomplete' };
     const later = (read.data ?? [])
       .map((entry) => mapAuditEntry(entry, state))
       .filter(Boolean)
@@ -1202,6 +1299,7 @@ async function runPass(context) {
     }, { signal });
     measure(restored);
     if (restored.ok) {
+      if (dryRun) actions.pushed += 1;
       const known = threads.get(op.thread);
       if (known) known.applied_tags = [...restoreTags];
       const after = await store.get(op.cardId);
@@ -1290,7 +1388,7 @@ async function runPass(context) {
 
   await verifyRecentWrites({
     state, cards, threads, client, now, receipts, actions, audit, store, latestOwnerTargets, signal,
-    applyConflict, touchBudget, measure,
+    applyConflict, touchBudget, measure, dryRun,
   });
 
   for (const card of [...cards.values()]) {
@@ -1404,7 +1502,7 @@ async function runPass(context) {
     if (card && card.discordState === 'posting') queue.push({ op, card });
   }
   for (const card of [...cards.values()]) {
-    if (card.discordState !== 'none' || card.discordThread) continue;
+    if (card.status === 'dropped' || card.discordState !== 'none' || card.discordThread) continue;
     const key = `create-${card.id}-${randomUUID()}`;
     const postingSince = iso(now());
     const updated = await persistCard(card, (next) => {
@@ -1424,7 +1522,7 @@ async function runPass(context) {
       record(receipts, { event: 'create-prep-failed', code: persisted.code ?? 'failed' });
     } else {
       const pushed = await pushNow('post');
-      if (pushed !== 'ok') {
+      if (pushed !== 'ok' && pushed !== 'dry-run') {
         waitingForPush = true;
         record(receipts, { event: 'waiting-for-push', cards: queue.length });
       } else {
@@ -1525,7 +1623,10 @@ async function ingestAudit({ client, state, now, signal, receipts, discordOpen }
   const at = typeof now === 'function' ? now() : Number(now);
   const cursor = state.audit.lastEntryId ?? null;
   if (!discordOpen()) {
-    return { ok: false, fatal: false, coverage: 'partial', raw: [], entries: [], cursorAtStart: cursor };
+    return {
+      ok: false, fatal: false, code: 'budget', coverage: 'partial',
+      raw: [], entries: [], cursorAtStart: cursor,
+    };
   }
   const read = async (actionType) => client.getAuditLog({
     guildId: state.guildId,
@@ -1541,6 +1642,7 @@ async function ingestAudit({ client, state, now, signal, receipts, discordOpen }
     return {
       ok: false,
       fatal: networkFailure(failed),
+      code: failed.status ?? failed.error ?? 'unknown',
       coverage: 'partial',
       raw: [],
       entries: [],
@@ -1571,7 +1673,7 @@ async function ingestAudit({ client, state, now, signal, receipts, discordOpen }
 
 async function verifyRecentWrites({
   state, cards, threads, client, now, receipts, actions, audit, store, latestOwnerTargets,
-  signal, applyConflict, touchBudget, measure,
+  signal, applyConflict, touchBudget, measure, dryRun,
 }) {
   const delay = Number.isFinite(state.ownerAuditDelayMs)
     ? Math.max(VERIFY_MIN_MS, 3 * state.ownerAuditDelayMs)
@@ -1588,7 +1690,7 @@ async function verifyRecentWrites({
       guildId: state.guildId, actionType: 111, after: key, limit: 100,
     }, { signal });
     measure(result);
-    const mapped = result.ok
+    const mapped = result.ok && result.meta.pages <= 1_000
       ? result.data.map((entry) => mapAuditEntry(entry, state)).filter(Boolean)
       : null;
     windows.set(key, mapped);
@@ -1601,7 +1703,7 @@ async function verifyRecentWrites({
     const patchAt = Date.parse(write.patchAt);
     if (!card || !Number.isFinite(t0) || !Number.isFinite(patchAt)) continue;
     const window = await readWindow(null);
-    if (window === null || window.length >= 100) {
+    if (window === null) {
       keep.push(write);
       continue;
     }
@@ -1652,6 +1754,7 @@ async function verifyRecentWrites({
         keep.push(write);
         continue;
       }
+      if (dryRun) actions.pushed += 1;
       if (thread) thread.applied_tags = [...intendedTags];
       const freshCard = await store.get(write.cardId);
       if (!freshCard.ok) {
@@ -1683,6 +1786,30 @@ async function verifyRecentWrites({
       });
       continue;
     }
+    // A later owner status event in the card log supersedes this write (plan IS-2: the
+    // later owner change wins). Retire it without any restore.
+    const anchor = write.eventId
+      ? (card.log ?? []).findIndex((event) => event.eventId === write.eventId)
+      : -1;
+    if ((card.log ?? []).some((event, index) => event.actor === 'owner'
+      && event.change === 'status'
+      && (anchor < 0 || index > anchor)
+      && Date.parse(event.at) > patchAt + 2_000 + uncertaintyFor(state.clock))) {
+      record(receipts, {
+        event: 'recent-write-superseded', id: write.cardId, key: write.key, source: 'card-log',
+      });
+      continue;
+    }
+    // Past 45 days an unverified write expires. A write without owner evidence, or one whose
+    // audit window is partial, cannot wait for verification any longer.
+    if (now() - t0 > AUDIT_RETENTION_MS && (owners.length === 0 || audit.coverage !== 'complete')) {
+      if (card.discordState === 'linked') {
+        await applyConflict(card, [card.discordBase || card.status], 'audit expired before verification');
+      }
+      record(receipts, { event: 'audit-expired', id: card.id, key: write.key });
+      actions.expired += 1;
+      continue;
+    }
     if (owners.length > 0) {
       if (audit.coverage !== 'complete') {
         keep.push(write);
@@ -1690,6 +1817,15 @@ async function verifyRecentWrites({
       }
       const owner = owners.at(-1);
       const ownerStatus = singleStatus(statusesOf(owner.toTags ?? [], state.tagIds));
+      // A newer owner tag than this write's race is the one to honour: reconcile
+      // takes it from the audit, and restoring the older owner tag would overwrite it.
+      if (window.some((entry) => entry.actor === 'owner'
+        && entry.targetId === write.thread && entry.time > patchAt + 1_000)) {
+        record(receipts, {
+          event: 'recent-write-superseded', id: write.cardId, key: write.key, source: 'audit',
+        });
+        continue;
+      }
       const thread = threads.get(write.thread);
       if (!ownerStatus || !state.tagIds[ownerStatus] || !thread || !touchBudget()) {
         keep.push(write);
@@ -1701,21 +1837,51 @@ async function verifyRecentWrites({
         keep.push(write);
         continue;
       }
-      const ownerTags = withStatusTag(
-        fresh.data?.applied_tags ?? [], statusTagIds(state), state.tagIds[ownerStatus],
-      );
-      const restored = await client.patchThreadTags({
-        threadId: write.thread,
-        appliedTags: ownerTags,
-        auditReason: `memento-sync ${write.key} restore`,
-        archived: false,
-      }, { signal });
-      measure(restored);
-      if (!restored.ok) {
+      // Restore only over what this write pushed or the raced owner entries set. Any other
+      // status is a newer change that reconcile must judge: make no write, keep silently.
+      const pushed = anchor >= 0
+        ? (card.log[anchor].to ?? null)
+        : (window.find((entry) => entry.entryId === write.botEntryId)?.to ?? null);
+      const shown = singleStatus(statusesOf(fresh.data?.applied_tags ?? [], state.tagIds));
+      const domain = [pushed, ...owners.map((entry) => singleStatus(statusesOf(entry.toTags ?? [], state.tagIds)))];
+      if (shown === null || !domain.includes(shown)) {
+        if (now() - t0 > AUDIT_RETENTION_MS) {
+          record(receipts, { event: 'audit-expired', id: card.id, key: write.key });
+          actions.expired += 1;
+          continue;
+        }
+        // A single status this write did not set and the owner did not choose in the window:
+        // never PATCH it. Keep the raced owner value and the shown value visible as conflict
+        // candidates (idempotent). Zero or 2+ status tags are left to reconcile (invalid).
+        if (shown !== null) {
+          const latest = await store.get(write.cardId);
+          if (latest.ok) {
+            await applyConflict(latest.card, [ownerStatus, shown, latest.card.status], 'recent-write-owner-race');
+          }
+        }
         keep.push(write);
         continue;
       }
-      thread.applied_tags = [...ownerTags];
+      let restoredNow = false;
+      if (shown !== ownerStatus) {
+        const ownerTags = withStatusTag(
+          fresh.data?.applied_tags ?? [], statusTagIds(state), state.tagIds[ownerStatus],
+        );
+        const restored = await client.patchThreadTags({
+          threadId: write.thread,
+          appliedTags: ownerTags,
+          auditReason: `memento-sync ${write.key} restore`,
+          archived: false,
+        }, { signal });
+        measure(restored);
+        if (!restored.ok) {
+          keep.push(write);
+          continue;
+        }
+        if (dryRun) actions.pushed += 1;
+        thread.applied_tags = [...ownerTags];
+        restoredNow = true;
+      }
       const freshCard = await store.get(write.cardId);
       if (!freshCard.ok) {
         keep.push(write);
@@ -1732,11 +1898,13 @@ async function verifyRecentWrites({
         ? now() - t0 <= AUDIT_RETENTION_MS
         : now() - patchAt < retentionDelay;
       if (unmeasuredRetention) {
-        record(receipts, {
-          event: 'recent-write-retained', id: write.cardId, key: write.key,
-          target: ownerStatus, source: 'original-window',
-          code: retentionDelay === null ? 'measurement-unavailable' : 'retention',
-        });
+        if (restoredNow) {
+          record(receipts, {
+            event: 'recent-write-retained', id: write.cardId, key: write.key,
+            target: ownerStatus, source: 'original-window',
+            code: retentionDelay === null ? 'measurement-unavailable' : 'retention',
+          });
+        }
         keep.push(write);
         continue;
       }
@@ -1744,12 +1912,6 @@ async function verifyRecentWrites({
         event: 'recent-write-owner-race', id: write.cardId, key: write.key,
         target: ownerStatus, source: 'original-window',
       });
-      continue;
-    }
-    if (now() - t0 > AUDIT_RETENTION_MS) {
-      await applyConflict(card, [card.discordBase || card.status], 'audit expired before verification');
-      record(receipts, { event: 'audit-expired', id: card.id, key: write.key });
-      actions.expired += 1;
       continue;
     }
     const ownVisible = !write.botEntryId || window.some((entry) => entry.entryId === write.botEntryId);

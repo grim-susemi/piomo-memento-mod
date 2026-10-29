@@ -291,6 +291,90 @@ test('Test_Sync_restores_an_owner_tag_changed_between_the_reread_and_the_patch',
   assert.equal(patches.length, 2, 'our PATCH plus the restoring PATCH');
 });
 
+test('Test_Sync_conflicts_on_a_hidden_owner_race_when_the_guild_has_120_other_audit_entries', async () => {
+  // Given 120 type-111 entries on another thread; when an owner tag change is hidden inside the write window;
+  // then the late owner entry still becomes a conflict and the owner tag is restored.
+  const env = await setup();
+  const other = env.seedThread({ name: 'noise', appliedTags: [env.tags.idea], content: 'noise' });
+  for (let i = 0; i < 120; i += 1) {
+    env.fake.hooks.ownerSetTags({ threadId: other.id, appliedTags: [i % 2 ? env.tags.idea : env.tags.held] });
+  }
+  const card = await env.newCard();
+  const thread = env.seedThread({ name: card.title, appliedTags: [env.tags.idea], content: card.original });
+  await linkCard(env, card, thread);
+  const withDelay = env.readState();
+  await env.store.writeSyncState({ ...withDelay, ownerAuditDelayMs: 1_000 });
+  await env.run();
+  await boardPick(env, card, 'done');
+  const hold = env.fake.hooks.holdNext({ method: 'PATCH', path: `/channels/${thread.id}` });
+
+  const pending = env.run();
+  await hold.arrived;
+  env.clock.advance(300);
+  env.fake.hooks.delayAuditVisibility();
+  env.fake.hooks.ownerSetTags({ threadId: thread.id, appliedTags: [env.tags.held] });
+  env.clock.advance(300);
+  hold.release();
+  const first = await pending;
+  assert.equal(first.actions.pushed, 1);
+
+  env.fake.hooks.releaseAuditVisibility();
+  env.clock.advance(6 * 60 * 1_000);
+  const second = await env.run();
+
+  assert.equal(second.actions.conflicts, 1, 'the late owner entry is found despite 120 other entries');
+  const after = await env.card(card.id);
+  assert.equal(after.discordState, 'conflict');
+  assert.equal(after.status, 'done', 'the card value is kept');
+  assert.equal(env.readState().recentWrites.length, 0);
+  const remote = await env.plainClient.getThread(thread.id);
+  assert.deepEqual(remote.data.applied_tags, [env.tags.held], 'the owner tag is restored');
+});
+
+test('Test_Sync_restores_a_late_owner_tag_when_120_later_audit_entries_follow', async () => {
+  // Given an owner tag changed during a held PATCH and the restore PATCH fails once, leaving a pending restore;
+  // when 120 later entries land in the guild and the next sync runs; then the restore is proven and retried.
+  const env = await setup();
+  let restoreAttempts = 0;
+  env.client = {
+    ...env.plainClient,
+    patchThreadTags: (params, options) => {
+      if (params.auditReason?.endsWith('restore') && restoreAttempts++ === 0) {
+        return Promise.resolve({ ok: false, status: 500, error: 'injected-restore-failure' });
+      }
+      return env.plainClient.patchThreadTags(params, options);
+    },
+  };
+  const card = await env.newCard();
+  const thread = env.seedThread({ name: card.title, appliedTags: [env.tags.idea], content: card.original });
+  await linkCard(env, card, thread);
+  const withDelay = env.readState();
+  await env.store.writeSyncState({ ...withDelay, ownerAuditDelayMs: 1_000 });
+  await boardPick(env, card, 'done');
+  const hold = env.fake.hooks.holdNext({ method: 'PATCH', path: `/channels/${thread.id}` });
+
+  const pending = env.run();
+  await hold.arrived;
+  env.fake.hooks.ownerSetTags({ threadId: thread.id, appliedTags: [env.tags.held] });
+  hold.release();
+  await pending;
+  assert.ok(env.readState().pending.some((op) => op.intent === 'restore'), 'the failed restore stays pending');
+
+  const other = env.seedThread({ name: 'noise', appliedTags: [env.tags.idea], content: 'noise' });
+  for (let i = 0; i < 120; i += 1) {
+    env.fake.hooks.ownerSetTags({ threadId: other.id, appliedTags: [i % 2 ? env.tags.idea : env.tags.held] });
+  }
+  env.clock.advance(6 * 60 * 1_000);
+  const second = await env.run();
+
+  assert.equal(second.ok, true);
+  assert.equal(env.readState().pending.filter((op) => op.intent === 'restore').length, 0, 'the pending restore is resolved');
+  const after = await env.card(card.id);
+  assert.equal(after.discordState, 'conflict');
+  const remote = await env.plainClient.getThread(thread.id);
+  assert.deepEqual(remote.data.applied_tags, [env.tags.held], 'the owner tag is restored');
+});
+
 test('Test_Sync_conflicts_when_an_owner_entry_is_visible_only_at_the_next_sync', async () => {
   // Given an owner tag change whose audit entry is hidden; when synced; then no guessing, a conflict.
   const env = await setup();
@@ -427,6 +511,541 @@ test('Test_Sync_verifies_a_recent_write_after_the_measured_delay', async () => {
   assert.equal(second.ok, true);
   assert.equal(env.readState().recentWrites.length, 0, 'measured delay + complete window retires the write');
   assert.equal(env.mutations().length, mutations);
+});
+
+async function ownerRaceAfterDonePick(env, card, thread) {
+  await boardPick(env, card, 'done');
+  const hold = env.fake.hooks.holdNext({ method: 'PATCH', path: `/channels/${thread.id}` });
+  const pending = env.run();
+  await hold.arrived;
+  env.clock.advance(300);
+  env.fake.hooks.delayAuditVisibility();
+  env.fake.hooks.ownerSetTags({ threadId: thread.id, appliedTags: [env.tags.held] });
+  env.clock.advance(300);
+  hold.release();
+  await pending;
+  env.fake.hooks.releaseAuditVisibility();
+  env.clock.advance(6 * 60 * 1_000);
+}
+
+test('Test_Sync_a_later_phone_tag_beats_a_conflicted_write_without_a_measured_delay', async () => {
+  // Given a done pick raced by an owner held tag, already a conflict, and no measured delay;
+  // when the owner then picks planned on the phone; then planned wins on both sides and
+  // the old owner tag is never restored over it.
+  const env = await setup();
+  const card = await env.newCard();
+  const thread = env.seedThread({ name: card.title, appliedTags: [env.tags.idea], content: card.original });
+  await linkCard(env, card, thread);
+  await env.run();
+  await ownerRaceAfterDonePick(env, card, thread);
+  await env.run();
+  const conflicted = await env.card(card.id);
+  assert.equal(conflicted.discordState, 'conflict');
+  assert.ok(conflicted.conflictDiscord.includes('held'));
+  env.clock.advance(60 * 1_000);
+  env.fake.hooks.ownerSetTags({ threadId: thread.id, appliedTags: [env.tags.planned] });
+  env.clock.advance(6 * 60 * 1_000);
+  await env.run();
+  await env.run();
+  const end = await env.card(card.id);
+  assert.equal(end.discordState, 'linked');
+  assert.equal(end.status, 'planned');
+  assert.deepEqual((await env.plainClient.getThread(thread.id)).data.applied_tags, [env.tags.planned]);
+});
+
+test('Test_Sync_a_later_phone_tag_beats_a_conflicted_write_with_a_measured_delay', async () => {
+  // Control: the same race with a measured delay retires the write and planned wins.
+  const env = await setup();
+  const card = await env.newCard();
+  const thread = env.seedThread({ name: card.title, appliedTags: [env.tags.idea], content: card.original });
+  await linkCard(env, card, thread);
+  await env.store.writeSyncState({ ...env.readState(), ownerAuditDelayMs: 63_529 });
+  await env.run();
+  await ownerRaceAfterDonePick(env, card, thread);
+  await env.run();
+  const conflicted = await env.card(card.id);
+  assert.equal(conflicted.discordState, 'conflict');
+  env.clock.advance(60 * 1_000);
+  env.fake.hooks.ownerSetTags({ threadId: thread.id, appliedTags: [env.tags.planned] });
+  env.clock.advance(6 * 60 * 1_000);
+  await env.run();
+  const end = await env.card(card.id);
+  assert.equal(end.discordState, 'linked');
+  assert.equal(end.status, 'planned');
+  assert.deepEqual((await env.plainClient.getThread(thread.id)).data.applied_tags, [env.tags.planned]);
+  assert.equal(env.readState().recentWrites.length, 0);
+});
+
+test('Test_Sync_an_unmeasured_late_phone_pick_is_not_restored_over', async () => {
+  // Given a done pick raced by an owner held tag, conflicted, no measured delay; when the owner
+  // picks planned while its audit entry is still hidden and a sync runs inside that delay; then
+  // no restore PATCH lands over planned, and once the audit shows, planned wins on both sides.
+  const env = await setup();
+  const card = await env.newCard();
+  const thread = env.seedThread({ name: card.title, appliedTags: [env.tags.idea], content: card.original });
+  await linkCard(env, card, thread);
+  await env.run();
+  await ownerRaceAfterDonePick(env, card, thread);
+  await env.run();
+  assert.equal((await env.card(card.id)).discordState, 'conflict');
+  env.clock.advance(60 * 1_000);
+  env.fake.hooks.delayAuditVisibility();
+  env.fake.hooks.ownerSetTags({ threadId: thread.id, appliedTags: [env.tags.planned] });
+  env.clock.advance(30 * 1_000);
+  const writesBefore = env.mutations().length;
+  await env.run();
+  assert.equal(env.mutations().length, writesBefore, 'no Discord write while the owner entry is hidden');
+  assert.deepEqual((await env.plainClient.getThread(thread.id)).data.applied_tags, [env.tags.planned]);
+  env.fake.hooks.releaseAuditVisibility();
+  env.clock.advance(6 * 60 * 1_000);
+  await env.run();
+  assert.equal(env.readState().recentWrites.length, 0);
+  assert.ok(receiptEvents(env).some((event) => event.event === 'recent-write-superseded' && event.source === 'audit'));
+  const end = await env.card(card.id);
+  assert.equal(end.discordState, 'linked');
+  assert.equal(end.status, 'planned');
+  assert.deepEqual((await env.plainClient.getThread(thread.id)).data.applied_tags, [env.tags.planned]);
+});
+
+async function conflictedDonePick(env) {
+  const card = await env.newCard();
+  const thread = env.seedThread({ name: card.title, appliedTags: [env.tags.idea], content: card.original });
+  await linkCard(env, card, thread);
+  await env.run();
+  await ownerRaceAfterDonePick(env, card, thread);
+  await env.run();
+  assert.equal((await env.card(card.id)).discordState, 'conflict');
+  return { card, thread };
+}
+
+test('Test_Sync_a_board_resolution_to_a_new_value_supersedes_a_conflicted_write', async () => {
+  // Given a done pick raced by an owner held tag and already a conflict; when the owner resolves
+  // on the board to planned; then planned is pushed, the old write is retired as superseded, and
+  // quiet syncs make no Discord write.
+  const env = await setup();
+  const { card, thread } = await conflictedDonePick(env);
+  const oldKey = env.readState().recentWrites[0].key;
+  env.clock.advance(60 * 1_000);
+  await boardPick(env, card, 'planned');
+  await env.run();
+  const resolved = await env.card(card.id);
+  assert.equal(resolved.discordState, 'linked');
+  assert.equal(resolved.status, 'planned');
+  assert.deepEqual((await env.plainClient.getThread(thread.id)).data.applied_tags, [env.tags.planned]);
+  assert.equal(env.readState().recentWrites.some((write) => write.key === oldKey), false);
+  assert.ok(receiptEvents(env).some((event) => event.event === 'recent-write-superseded' && event.source === 'card-log'));
+  const writes = env.mutations().length;
+  env.clock.advance(10 * 60 * 1_000);
+  await env.run();
+  await env.run();
+  assert.equal(env.mutations().length, writes, 'quiet syncs make no Discord write');
+  assert.deepEqual((await env.plainClient.getThread(thread.id)).data.applied_tags, [env.tags.planned]);
+  assert.equal((await env.card(card.id)).discordState, 'linked');
+});
+
+test('Test_Sync_a_board_resolution_to_the_pushed_value_is_not_undone', async () => {
+  // Given a done pick raced by an owner held tag and already a conflict; when the owner resolves
+  // on the board to done, the value this write pushed; then done stays on Discord, the card is
+  // linked, and quiet syncs make no Discord write.
+  const env = await setup();
+  const { card, thread } = await conflictedDonePick(env);
+  env.clock.advance(60 * 1_000);
+  await boardPick(env, card, 'done');
+  await env.run();
+  const resolved = await env.card(card.id);
+  assert.equal(resolved.discordState, 'linked');
+  assert.equal(resolved.status, 'done');
+  assert.deepEqual((await env.plainClient.getThread(thread.id)).data.applied_tags, [env.tags.done]);
+  const writes = env.mutations().length;
+  env.clock.advance(10 * 60 * 1_000);
+  await env.run();
+  await env.run();
+  assert.equal(env.mutations().length, writes, 'quiet syncs make no Discord write');
+  assert.deepEqual((await env.plainClient.getThread(thread.id)).data.applied_tags, [env.tags.done]);
+});
+
+test('Test_Sync_quiet_syncs_after_a_conflict_do_not_restore_again_until_expiry', async () => {
+  // Given a raced done pick already recorded as a conflict and no measured delay; when four quiet
+  // syncs run ten minutes apart, then no Discord write and no new retained receipt, and the record
+  // stays; after 46 days it retires with no new conflict event.
+  const env = await setup();
+  const { card } = await conflictedDonePick(env);
+  const writes = env.mutations().length;
+  const retained = receiptEvents(env).filter((event) => event.event === 'recent-write-retained').length;
+  for (let index = 0; index < 4; index += 1) {
+    env.clock.advance(10 * 60 * 1_000);
+    await env.run();
+  }
+  assert.equal(env.mutations().length, writes, 'no Discord write in quiet syncs');
+  assert.equal(receiptEvents(env).filter((event) => event.event === 'recent-write-retained').length, retained);
+  assert.equal(env.readState().recentWrites.length, 1);
+  const logLength = (await env.card(card.id)).log.length;
+  env.clock.advance(46 * 24 * 60 * 60 * 1_000);
+  await env.run();
+  assert.equal(env.readState().recentWrites.length, 0);
+  const after = await env.card(card.id);
+  assert.equal(after.discordState, 'conflict');
+  assert.equal(after.log.length, logLength, 'no new conflict event after expiry');
+});
+
+test('Test_Sync_a_board_resolution_with_a_measured_delay_stays_resolved', async () => {
+  // Control: the same board resolution with a measured delay ends linked on the resolved value.
+  const env = await setup();
+  const card = await env.newCard();
+  const thread = env.seedThread({ name: card.title, appliedTags: [env.tags.idea], content: card.original });
+  await linkCard(env, card, thread);
+  await env.store.writeSyncState({ ...env.readState(), ownerAuditDelayMs: 63_529 });
+  await env.run();
+  await ownerRaceAfterDonePick(env, card, thread);
+  await env.run();
+  assert.equal((await env.card(card.id)).discordState, 'conflict');
+  env.clock.advance(60 * 1_000);
+  await boardPick(env, card, 'planned');
+  await env.run();
+  const resolved = await env.card(card.id);
+  assert.equal(resolved.discordState, 'linked');
+  assert.equal(resolved.status, 'planned');
+  assert.deepEqual((await env.plainClient.getThread(thread.id)).data.applied_tags, [env.tags.planned]);
+  const writes = env.mutations().length;
+  env.clock.advance(10 * 60 * 1_000);
+  await env.run();
+  assert.equal(env.mutations().length, writes, 'quiet syncs make no Discord write');
+  assert.equal(env.readState().recentWrites.length, 0);
+});
+
+test('Test_Sync_a_deleted_card_stays_deleted_past_the_audit_window', async () => {
+  // Given a clean board push and then a deleted thread; when 46 days pass; then the card stays
+  // deleted with no conflict event and the record expires with an audit-expired receipt.
+  const env = await setup();
+  const card = await env.newCard();
+  const thread = env.seedThread({ name: card.title, appliedTags: [env.tags.idea], content: card.original });
+  await linkCard(env, card, thread);
+  await env.run();
+  await boardPick(env, card, 'done');
+  await env.run();
+  assert.equal(env.readState().recentWrites.length, 1);
+  env.fake.hooks.deleteThread(thread.id);
+  await env.run();
+  assert.equal((await env.card(card.id)).discordState, 'deleted');
+  const logLength = (await env.card(card.id)).log.length;
+  env.clock.advance(46 * 24 * 60 * 60 * 1_000);
+  await env.run();
+  const after = await env.card(card.id);
+  assert.equal(after.discordState, 'deleted');
+  assert.equal(after.log.length, logLength, 'no conflict event on a deleted card');
+  assert.equal(env.readState().recentWrites.length, 0);
+  assert.ok(receiptEvents(env).some((event) => event.event === 'audit-expired'));
+});
+
+test('Test_Sync_a_day_ten_board_change_retires_the_first_write_only', async () => {
+  // Given a clean board push, then a board change at day ten; when 46 days pass, the first write is
+  // gone without a conflict; when 56 days pass, only the second write expires to a conflict.
+  const env = await setup();
+  const card = await env.newCard();
+  const thread = env.seedThread({ name: card.title, appliedTags: [env.tags.idea], content: card.original });
+  await linkCard(env, card, thread);
+  await env.run();
+  await boardPick(env, card, 'done');
+  await env.run();
+  const first = env.readState().recentWrites[0];
+  env.clock.advance(10 * 24 * 60 * 60 * 1_000);
+  await boardPick(env, card, 'planned');
+  await env.run();
+  env.clock.advance(36 * 24 * 60 * 60 * 1_000);
+  await env.run();
+  assert.equal(env.readState().recentWrites.some((write) => write.key === first.key), false);
+  assert.equal(env.readState().recentWrites.length, 1);
+  assert.equal(receiptEvents(env).filter((event) => event.event === 'audit-expired').length, 0, 'the first write expires to nothing');
+  env.clock.advance(10 * 24 * 60 * 60 * 1_000);
+  await env.run();
+  assert.equal(env.readState().recentWrites.length, 0);
+  assert.equal((await env.card(card.id)).discordState, 'conflict');
+  assert.ok(receiptEvents(env).some((event) => event.event === 'audit-expired'));
+});
+
+test('Test_Sync_an_imported_post_raced_by_an_owner_tag_keeps_the_owner_value', async () => {
+  // Given an untagged phone post whose idea PATCH is in flight while the owner tags it held with the
+  // audit entry hidden; when the audit shows and quiet syncs run; then the owner's held is a conflict
+  // candidate and no later Discord write replaces it.
+  const env = await setup();
+  const thread = env.seedThread({ name: '태그 없는 글', appliedTags: [], content: '태그 없는 원문' });
+  const hold = env.fake.hooks.holdNext({ method: 'PATCH', path: `/channels/${thread.id}` });
+  const pending = env.run();
+  await hold.arrived;
+  env.clock.advance(300);
+  env.fake.hooks.delayAuditVisibility();
+  env.fake.hooks.ownerSetTags({ threadId: thread.id, appliedTags: [env.tags.held] });
+  env.clock.advance(300);
+  hold.release();
+  await pending;
+  env.fake.hooks.releaseAuditVisibility();
+  env.clock.advance(6 * 60 * 1_000);
+  await env.run();
+  const cards = await env.cards();
+  assert.equal(cards.length, 1);
+  const card = await env.card(cards[0].id);
+  assert.equal(card.discordState, 'conflict');
+  assert.ok(card.conflictDiscord.includes('held'), `owner held lost: ${JSON.stringify(card.conflictDiscord)}`);
+  const writes = env.mutations().length;
+  for (let index = 0; index < 4; index += 1) {
+    env.clock.advance(10 * 60 * 1_000);
+    await env.run();
+  }
+  assert.equal(env.mutations().length, writes, 'quiet syncs make no Discord write');
+  assert.deepEqual((await env.plainClient.getThread(thread.id)).data.applied_tags, [env.tags.idea]);
+});
+
+test('Test_Sync_a_member_change_over_a_raced_owner_value_keeps_the_owner_value', async () => {
+  // Given our done PATCH overwrote the owner's held with the audit hidden; when a non-owner member
+  // sets planned inside the delay and the audit later shows; then nothing is written over the member's
+  // value and the owner's held is a conflict candidate.
+  const memberId = '999999999999999999';
+  const env = await setup();
+  const card = await env.newCard();
+  const thread = env.seedThread({ name: card.title, appliedTags: [env.tags.idea], content: card.original });
+  await linkCard(env, card, thread);
+  await env.run();
+  await boardPick(env, card, 'done');
+  const hold = env.fake.hooks.holdNext({ method: 'PATCH', path: `/channels/${thread.id}` });
+  const pending = env.run();
+  await hold.arrived;
+  env.clock.advance(300);
+  env.fake.hooks.delayAuditVisibility();
+  env.fake.hooks.ownerSetTags({ threadId: thread.id, appliedTags: [env.tags.held] });
+  env.clock.advance(300);
+  hold.release();
+  await pending;
+  env.clock.advance(60 * 1_000);
+  env.fake.hooks.ownerSetTags({ threadId: thread.id, appliedTags: [env.tags.planned], userId: memberId });
+  env.clock.advance(30 * 1_000);
+  const writes = env.mutations().length;
+  await env.run();
+  assert.equal(env.mutations().length, writes, 'no write while the audit entries are hidden');
+  env.fake.hooks.releaseAuditVisibility();
+  env.clock.advance(6 * 60 * 1_000);
+  await env.run();
+  const end = await env.card(card.id);
+  assert.ok(end.conflictDiscord?.includes('held'), `owner held lost: ${JSON.stringify(end.conflictDiscord)}`);
+  assert.equal(env.mutations().length, writes, 'no write over the member value');
+  assert.ok(end.conflictDiscord?.includes('planned'), `member value not visible: ${JSON.stringify(end.conflictDiscord)}`);
+  assert.deepEqual((await env.plainClient.getThread(thread.id)).data.applied_tags, [env.tags.planned]);
+});
+
+test('Test_Sync_a_board_push_raced_by_an_owner_tag_keeps_the_owner_value', async () => {
+  // Given a board pick raced by the owner's held with the audit hidden;
+  // when the audit shows and quiet syncs run; then the owner's held is restored once, recorded as a
+  // conflict candidate, and no later Discord write follows.
+  const env = await setup();
+  const card = await env.newCard();
+  const thread = env.seedThread({ name: card.title, appliedTags: [env.tags.idea], content: card.original });
+  await linkCard(env, card, thread);
+  await env.run();
+  const at = env.clock.now();
+  await env.updateCard(card.id, (current) => ({ ...current, status: 'done' }), {
+    at: iso(at), actor: 'owner', via: 'board', change: 'status', from: card.status, to: 'done', reason: 'owner-board',
+  });
+  const hold = env.fake.hooks.holdNext({ method: 'PATCH', path: `/channels/${thread.id}` });
+  const pending = env.run();
+  await hold.arrived;
+  env.clock.advance(300);
+  env.fake.hooks.delayAuditVisibility();
+  env.fake.hooks.ownerSetTags({ threadId: thread.id, appliedTags: [env.tags.held] });
+  env.clock.advance(300);
+  hold.release();
+  await pending;
+  assert.equal(env.readState().recentWrites.length, 1);
+  assert.ok(env.readState().recentWrites[0].eventId, 'the guarded push is anchored by its board event');
+  env.fake.hooks.releaseAuditVisibility();
+  env.clock.advance(6 * 60 * 1_000);
+  await env.run();
+  const end = await env.card(card.id);
+  assert.ok(end.conflictDiscord?.includes('held'), `owner held lost: ${JSON.stringify(end.conflictDiscord)}`);
+  const writes = env.mutations().length;
+  for (let index = 0; index < 4; index += 1) {
+    env.clock.advance(10 * 60 * 1_000);
+    await env.run();
+  }
+  assert.equal(env.mutations().length, writes, 'quiet syncs make no Discord write');
+  assert.deepEqual((await env.plainClient.getThread(thread.id)).data.applied_tags, [env.tags.held]);
+});
+
+async function racedWithInWindowMember(env, card, thread) {
+  const memberId = '999999999999999999';
+  await boardPick(env, card, 'done');
+  const hold = env.fake.hooks.holdNext({ method: 'PATCH', path: `/channels/${thread.id}` });
+  const pending = env.run();
+  await hold.arrived;
+  env.clock.advance(300);
+  env.fake.hooks.delayAuditVisibility();
+  env.fake.hooks.ownerSetTags({ threadId: thread.id, appliedTags: [env.tags.held] });
+  env.fake.hooks.ownerSetTags({ threadId: thread.id, appliedTags: [env.tags.planned], userId: memberId });
+  env.clock.advance(300);
+  hold.release();
+  await pending;
+  env.fake.hooks.releaseAuditVisibility();
+  env.clock.advance(6 * 60 * 1_000);
+}
+
+test('Test_Sync_a_board_pick_after_an_in_window_member_change_stays_linked', async () => {
+  // Given a done PATCH raced by the owner's held and a non-owner's planned inside the audit window;
+  // when the owner picks held on the board after the conflict; then held stays linked and no later
+  // sync re-conflicts it.
+  const env = await setup();
+  const card = await env.newCard();
+  const thread = env.seedThread({ name: card.title, appliedTags: [env.tags.idea], content: card.original });
+  await linkCard(env, card, thread);
+  await env.run();
+  await racedWithInWindowMember(env, card, thread);
+  await env.run();
+  await boardPick(env, card, 'held');
+  await env.run();
+  const resolved = await env.card(card.id);
+  assert.equal(resolved.discordState, 'linked');
+  assert.equal(resolved.status, 'held');
+  assert.deepEqual((await env.plainClient.getThread(thread.id)).data.applied_tags, [env.tags.held]);
+  const writes = env.mutations().length;
+  const logLength = resolved.log.length;
+  for (let index = 0; index < 4; index += 1) {
+    env.clock.advance(10 * 60 * 1_000);
+    await env.run();
+  }
+  const end = await env.card(card.id);
+  assert.equal(end.discordState, 'linked', 'stays linked');
+  assert.equal(end.log.length, logLength, 'quiet syncs add no card-log event');
+  assert.equal(env.mutations().length, writes, 'quiet syncs make no Discord write');
+});
+
+test('Test_Sync_a_second_board_pick_after_an_in_window_member_change_stays_linked', async () => {
+  // Given the same in-window race; when the owner picks held and then planned on the board; then the
+  // last pick ends linked on planned and quiet syncs keep it linked.
+  const env = await setup();
+  const card = await env.newCard();
+  const thread = env.seedThread({ name: card.title, appliedTags: [env.tags.idea], content: card.original });
+  await linkCard(env, card, thread);
+  await env.run();
+  await racedWithInWindowMember(env, card, thread);
+  await env.run();
+  await boardPick(env, card, 'held');
+  await env.run();
+  await boardPick(env, card, 'planned');
+  await env.run();
+  const resolved = await env.card(card.id);
+  assert.equal(resolved.discordState, 'linked');
+  assert.equal(resolved.status, 'planned');
+  assert.deepEqual((await env.plainClient.getThread(thread.id)).data.applied_tags, [env.tags.planned]);
+  const writes = env.mutations().length;
+  for (let index = 0; index < 4; index += 1) {
+    env.clock.advance(10 * 60 * 1_000);
+    await env.run();
+  }
+  assert.equal((await env.card(card.id)).discordState, 'linked', 'stays linked');
+  assert.equal(env.mutations().length, writes, 'quiet syncs make no Discord write');
+});
+
+async function zeroOrTwoTagMemberRace(env, card, thread, appliedTags) {
+  const memberId = '999999999999999999';
+  await boardPick(env, card, 'done');
+  const hold = env.fake.hooks.holdNext({ method: 'PATCH', path: `/channels/${thread.id}` });
+  const pending = env.run();
+  await hold.arrived;
+  env.clock.advance(300);
+  env.fake.hooks.delayAuditVisibility();
+  env.fake.hooks.ownerSetTags({ threadId: thread.id, appliedTags: [env.tags.held] });
+  env.clock.advance(300);
+  hold.release();
+  await pending;
+  env.clock.advance(60 * 1_000);
+  env.fake.hooks.ownerSetTags({ threadId: thread.id, appliedTags, userId: memberId });
+  env.fake.hooks.releaseAuditVisibility();
+  env.clock.advance(6 * 60 * 1_000);
+  await env.run();
+}
+
+test('Test_Sync_a_zero_tag_thread_after_a_raced_write_stays_invalid_without_churn', async () => {
+  // Given a raced done write whose thread a member then leaves with no status tag; when synced
+  // and quiet syncs run; then the card stays invalid, no Discord write is made, and the card log is flat.
+  const env = await setup();
+  const card = await env.newCard();
+  const thread = env.seedThread({ name: card.title, appliedTags: [env.tags.idea], content: card.original });
+  await linkCard(env, card, thread);
+  await env.run();
+  await zeroOrTwoTagMemberRace(env, card, thread, []);
+  const first = await env.card(card.id);
+  assert.equal(first.discordState, 'invalid');
+  const writes = env.mutations().length;
+  const logLength = first.log.length;
+  for (let index = 0; index < 4; index += 1) {
+    env.clock.advance(10 * 60 * 1_000);
+    await env.run();
+  }
+  const end = await env.card(card.id);
+  assert.equal(end.discordState, 'invalid');
+  assert.equal(end.log.length, logLength, 'quiet syncs add no card-log event');
+  assert.equal(env.mutations().length, writes, 'quiet syncs make no Discord write');
+  assert.deepEqual((await env.plainClient.getThread(thread.id)).data.applied_tags, []);
+});
+
+test('Test_Sync_a_two_tag_thread_after_a_raced_write_stays_invalid_without_churn', async () => {
+  // Given a raced done write whose thread a member then tags with two status tags; when synced and
+  // quiet syncs run; then the card stays invalid, no Discord write is made, and the card log is flat.
+  const env = await setup();
+  const card = await env.newCard();
+  const thread = env.seedThread({ name: card.title, appliedTags: [env.tags.idea], content: card.original });
+  await linkCard(env, card, thread);
+  await env.run();
+  await zeroOrTwoTagMemberRace(env, card, thread, [env.tags.planned, env.tags.idea]);
+  const first = await env.card(card.id);
+  assert.equal(first.discordState, 'invalid');
+  const writes = env.mutations().length;
+  const logLength = first.log.length;
+  for (let index = 0; index < 4; index += 1) {
+    env.clock.advance(10 * 60 * 1_000);
+    await env.run();
+  }
+  const end = await env.card(card.id);
+  assert.equal(end.discordState, 'invalid');
+  assert.equal(end.log.length, logLength, 'quiet syncs add no card-log event');
+  assert.equal(env.mutations().length, writes, 'quiet syncs make no Discord write');
+});
+
+test('Test_Sync_a_domain_miss_write_expires_after_45_days_with_a_current_audit', async () => {
+  // Given a member's change recorded as a conflict over our raced write; when another card's push keeps
+  // the audit cursor current and 46 days pass; then the raced write is retired with an audit-expired
+  // receipt instead of being kept forever.
+  const memberId = '999999999999999999';
+  const env = await setup();
+  const card = await env.newCard();
+  const thread = env.seedThread({ name: card.title, appliedTags: [env.tags.idea], content: card.original });
+  await linkCard(env, card, thread);
+  await env.run();
+  await boardPick(env, card, 'done');
+  const hold = env.fake.hooks.holdNext({ method: 'PATCH', path: `/channels/${thread.id}` });
+  const pending = env.run();
+  await hold.arrived;
+  env.clock.advance(300);
+  env.fake.hooks.delayAuditVisibility();
+  env.fake.hooks.ownerSetTags({ threadId: thread.id, appliedTags: [env.tags.held] });
+  env.clock.advance(300);
+  hold.release();
+  await pending;
+  env.fake.hooks.releaseAuditVisibility();
+  env.clock.advance(60 * 1_000);
+  env.fake.hooks.ownerSetTags({ threadId: thread.id, appliedTags: [env.tags.planned], userId: memberId });
+  env.clock.advance(6 * 60 * 1_000);
+  await env.run();
+  const key = env.readState().recentWrites[0].key;
+  const other = await env.newCard({ title: '다른 카드' });
+  const otherThread = env.seedThread({ name: other.title, appliedTags: [env.tags.idea], content: other.original });
+  await linkCard(env, other, otherThread);
+  await env.run();
+  env.clock.advance(45 * 24 * 60 * 60 * 1_000 - 60 * 60 * 1_000);
+  await boardPick(env, other, 'done');
+  await env.run();
+  await env.run();
+  env.clock.advance(3 * 60 * 60 * 1_000);
+  await env.run();
+  assert.equal(env.readState().recentWrites.some((write) => write.key === key), false, 'the raced write is retired');
+  assert.ok(receiptEvents(env).some((event) => event.event === 'audit-expired' && event.id === card.id));
 });
 
 test('Test_Sync_imports_a_two_tag_owner_post_as_a_conflict', async () => {
@@ -626,6 +1245,30 @@ test('Test_Sync_keeps_a_deleted_thread_without_reposting', async () => {
   assert.equal(after.discordState, 'deleted');
   assert.ok(after.log.some((event) => event.change === 'remote-deleted'));
   assert.equal(env.posts().length, 0);
+});
+
+test('Test_Sync_never_posts_a_dropped_card_with_no_thread', async () => {
+  // Given a never-posted card dropped before sync with no pending create; when synced; then no post.
+  const env = await setup();
+  const card = await env.newCard({ original: '드롭된 카드 원문' });
+  const dropped = await env.updateCard(card.id, (current) => ({ ...current, status: 'dropped' }), {
+    actor: 'owner', via: 'board', change: 'status', from: card.status, to: 'dropped', reason: 'owner-board',
+  });
+  assert.equal(dropped.status, 'dropped');
+  assert.equal(dropped.discordState, 'none');
+  assert.ok(!dropped.discordThread);
+  assert.equal(env.readState().pending.length, 0);
+  const before = await env.card(card.id);
+
+  const result = await env.run();
+  const after = await env.card(card.id);
+  assert.equal(result.ok, true);
+  assert.equal(result.actions.posted, 0);
+  assert.equal(env.posts().length, 0);
+  assert.equal(after.status, 'dropped');
+  assert.equal(after.discordState, 'none');
+  assert.ok(!after.discordThread);
+  assert.equal(after.original, before.original);
 });
 
 test('Test_Sync_when_discord_is_unreachable_still_commits_and_pushes', async () => {
