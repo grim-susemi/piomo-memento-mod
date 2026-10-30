@@ -130,6 +130,550 @@
       "match": "word"
     },
     {
+      "token": "getBuiltinModule",
+      "match": "word"
+    },
+    {
+      "token": "binding",
+      "match": "word"
+    },
+    {
+      "token": "dlopen",
+      "match": "word"
+    },
+    {
+      "token": "mainModule",
+      "match": "word"
+    },
+    {
+      "token": "WebSocket",
+      "match": "word"
+    },
+    {
+      "token": "MessageChannel",
+      "match": "word"
+    },
+    {
+      "token": "MessagePort",
+      "match": "word"
+    },
+    {
+      "token": "BroadcastChannel",
+      "match": "word"
+    },
+    {
+      "token": "EventSource",
+      "match": "word"
+    },
+    {
+      "token": "stdin",
+      "match": "word"
+    },
+    {
+      "token": "watch",
+      "match": "word"
+    },
+    {
+      "token": "watchFile",
+      "match": "word"
+    },
+    {
+      "token": "unwatchFile",
+      "match": "word"
+    },
+    {
+      "token": "Worker",
+      "match": "word"
+    },
+    {
+      "token": "connect",
+      "match": "word"
+    },
+    {
+      "token": "createConnection",
+      "match": "word"
+    },
+    {
+      "token": "createSocket",
+      "match": "word"
+    },
+    {
+      "token": "Socket",
+      "match": "word"
+    },
+    {
+      "token": "Server",
+      "match": "word"
+    },
+    {
+      "token": "FSWatcher",
+      "match": "word"
+    },
+    {
+      "token": "StatWatcher",
+      "match": "word"
+    },
+    {
+      "token": "send",
+      "match": "word"
+    },
+    {
+      "token": "postMessage",
+      "match": "word"
+    },
+    {
+      "token": "openStdin",
+      "match": "word"
+    },
+    {
+      "token": "_debugProcess",
+      "match": "word"
+    },
+    {
+      "token": "spawn",
+      "match": "word"
+    },
+    {
+      "token": "spawnSync",
+      "match": "word"
+    },
+    {
+      "token": "execSync",
+      "match": "word"
+    },
+    {
+      "token": "fork",
+      "match": "word"
+    },
+    {
+      "token": "ChildProcess",
+      "match": "word"
+    },
+    {
+      "token": "_forkChild",
+      "match": "word"
+    },
+    {
+      "token": "createReadStream",
+      "match": "word"
+    },
+    {
+      "token": "ReadStream",
+      "match": "word"
+    },
+    {
+      "token": "FileReadStream",
+      "match": "word"
+    },
+    {
+      "token": "createWriteStream",
+      "match": "word"
+    },
+    {
+      "token": "WriteStream",
+      "match": "word"
+    },
+    {
+      "token": "FileWriteStream",
+      "match": "word"
+    },
+    {
+      "token": "Utf8Stream",
+      "match": "word"
+    },
+    {
+      "token": "ClientRequest",
+      "match": "word"
+    },
+    {
+      "token": "_connectionListener",
+      "match": "word"
+    },
+    {
+      "token": "_linkedBinding",
+      "match": "word"
+    },
+    {
+      "token": "_startProfilerIdleNotifier",
+      "match": "word"
+    },
+    {
+      "token": "execve",
+      "match": "word"
+    },
+    {
+      "token": "debugPort",
+      "match": "word"
+    },
+    {
+      "token": "setEngine",
+      "match": "word"
+    },
+    {
+      "token": "opendir",
+      "match": "word"
+    },
+    {
+      "token": "opendirSync",
+      "match": "word"
+    },
+    {
+      "token": "open",
+      "match": "word"
+    },
+    {
+      "token": "openSync",
+      "match": "word"
+    },
+    {
+      "token": "PerformanceObserver",
+      "match": "word"
+    },
+    {
+      "token": "nextTick",
+      "match": "word"
+    },
+    {
+      "token": "queueMicrotask",
+      "match": "word"
+    },
+    {
+      "token": "ref",
+      "match": "word"
+    },
+    {
+      "token": "addListener",
+      "match": "word"
+    },
+    {
+      "token": "prependListener",
+      "match": "word"
+    },
+    {
+      "token": "prependOnceListener",
+      "match": "word"
+    },
+    {
+      "token": "__defineGetter__",
+      "match": "word"
+    },
+    {
+      "token": "__defineSetter__",
+      "match": "word"
+    },
+    {
+      "token": "__lookupGetter__",
+      "match": "word"
+    },
+    {
+      "token": "__lookupSetter__",
+      "match": "word"
+    },
+    {
+      "token": "__proto__",
+      "match": "word"
+    },
+    {
+      "token": "_debugEnd",
+      "match": "word"
+    },
+    {
+      "token": "_errnoException",
+      "match": "word"
+    },
+    {
+      "token": "_events",
+      "match": "word"
+    },
+    {
+      "token": "_eventsCount",
+      "match": "word"
+    },
+    {
+      "token": "_exceptionWithHostPort",
+      "match": "word"
+    },
+    {
+      "token": "_exiting",
+      "match": "word"
+    },
+    {
+      "token": "_extend",
+      "match": "word"
+    },
+    {
+      "token": "_fatalException",
+      "match": "word"
+    },
+    {
+      "token": "_getActiveHandles",
+      "match": "word"
+    },
+    {
+      "token": "_getActiveRequests",
+      "match": "word"
+    },
+    {
+      "token": "_kill",
+      "match": "word"
+    },
+    {
+      "token": "_makeLong",
+      "match": "word"
+    },
+    {
+      "token": "_maxListeners",
+      "match": "word"
+    },
+    {
+      "token": "_preload_modules",
+      "match": "word"
+    },
+    {
+      "token": "_rawDebug",
+      "match": "word"
+    },
+    {
+      "token": "_sessionCache",
+      "match": "word"
+    },
+    {
+      "token": "_stopProfilerIdleNotifier",
+      "match": "word"
+    },
+    {
+      "token": "_tickCallback",
+      "match": "word"
+    },
+    {
+      "token": "_toUnixTimestamp",
+      "match": "word"
+    },
+    {
+      "token": "agentKeepAliveTimeoutBuffer",
+      "match": "word"
+    },
+    {
+      "token": "Atomics",
+      "match": "word"
+    },
+    {
+      "token": "chdir",
+      "match": "word"
+    },
+    {
+      "token": "clearImmediate",
+      "match": "word"
+    },
+    {
+      "token": "clearInterval",
+      "match": "word"
+    },
+    {
+      "token": "CloseEvent",
+      "match": "word"
+    },
+    {
+      "token": "debug",
+      "match": "word"
+    },
+    {
+      "token": "debuglog",
+      "match": "word"
+    },
+    {
+      "token": "defaultMaxSockets",
+      "match": "word"
+    },
+    {
+      "token": "defaultPort",
+      "match": "word"
+    },
+    {
+      "token": "Dir",
+      "match": "word"
+    },
+    {
+      "token": "emit",
+      "match": "word"
+    },
+    {
+      "token": "emitWarning",
+      "match": "word"
+    },
+    {
+      "token": "finalization",
+      "match": "word"
+    },
+    {
+      "token": "FinalizationRegistry",
+      "match": "word"
+    },
+    {
+      "token": "freeSockets",
+      "match": "word"
+    },
+    {
+      "token": "getMaxListeners",
+      "match": "word"
+    },
+    {
+      "token": "globalAgent",
+      "match": "word"
+    },
+    {
+      "token": "hasUncaughtExceptionCaptureCallback",
+      "match": "word"
+    },
+    {
+      "token": "IncomingMessage",
+      "match": "word"
+    },
+    {
+      "token": "keepAliveMsecs",
+      "match": "word"
+    },
+    {
+      "token": "loadEnvFile",
+      "match": "word"
+    },
+    {
+      "token": "maxCachedSessions",
+      "match": "word"
+    },
+    {
+      "token": "maxFreeSockets",
+      "match": "word"
+    },
+    {
+      "token": "maxTotalSockets",
+      "match": "word"
+    },
+    {
+      "token": "MessageEvent",
+      "match": "word"
+    },
+    {
+      "token": "openAsBlob",
+      "match": "word"
+    },
+    {
+      "token": "OutgoingMessage",
+      "match": "word"
+    },
+    {
+      "token": "promises",
+      "match": "word"
+    },
+    {
+      "token": "rawListeners",
+      "match": "word"
+    },
+    {
+      "token": "readSync",
+      "match": "word"
+    },
+    {
+      "token": "readv",
+      "match": "word"
+    },
+    {
+      "token": "readvSync",
+      "match": "word"
+    },
+    {
+      "token": "reallyExit",
+      "match": "word"
+    },
+    {
+      "token": "removeAllListeners",
+      "match": "word"
+    },
+    {
+      "token": "removeListener",
+      "match": "word"
+    },
+    {
+      "token": "report",
+      "match": "word"
+    },
+    {
+      "token": "scheduling",
+      "match": "word"
+    },
+    {
+      "token": "ServerResponse",
+      "match": "word"
+    },
+    {
+      "token": "setFips",
+      "match": "word"
+    },
+    {
+      "token": "setGlobalProxyFromEnv",
+      "match": "word"
+    },
+    {
+      "token": "setMaxIdleHTTPParsers",
+      "match": "word"
+    },
+    {
+      "token": "setMaxListeners",
+      "match": "word"
+    },
+    {
+      "token": "setSourceMapsEnabled",
+      "match": "word"
+    },
+    {
+      "token": "setTraceSigInt",
+      "match": "word"
+    },
+    {
+      "token": "setUncaughtExceptionCaptureCallback",
+      "match": "word"
+    },
+    {
+      "token": "totalSocketCount",
+      "match": "word"
+    },
+    {
+      "token": "WebAssembly",
+      "match": "word"
+    },
+    {
+      "token": "writeSync",
+      "match": "word"
+    },
+    {
+      "token": "writev",
+      "match": "word"
+    },
+    {
+      "token": "writevSync",
+      "match": "word"
+    },
+    {
+      "token": "Agent",
+      "match": "word"
+    },
+    {
+      "token": "scheduler",
+      "match": "word"
+    },
+    {
+      "token": "performance",
+      "match": "word"
+    },
+    {
+      "token": "Performance",
+      "match": "word"
+    },
+    {
+      "token": "fips",
+      "match": "word"
+    },
+    {
       "token": "import(",
       "match": "import-call",
       "lineOnly": true
@@ -145,7 +689,129 @@
     "node:vm",
     "node:module",
     "node:timers",
-    "node:timers/promises"
+    "node:timers/promises",
+    "_http_agent",
+    "_http_client",
+    "_http_common",
+    "_http_incoming",
+    "_http_outgoing",
+    "_http_server",
+    "_stream_duplex",
+    "_stream_passthrough",
+    "_stream_readable",
+    "_stream_transform",
+    "_stream_wrap",
+    "_stream_writable",
+    "_tls_common",
+    "_tls_wrap",
+    "assert",
+    "assert/strict",
+    "async_hooks",
+    "buffer",
+    "child_process",
+    "cluster",
+    "console",
+    "constants",
+    "crypto",
+    "dgram",
+    "diagnostics_channel",
+    "dns",
+    "dns/promises",
+    "domain",
+    "events",
+    "fs",
+    "fs/promises",
+    "http",
+    "http2",
+    "https",
+    "inspector",
+    "inspector/promises",
+    "module",
+    "net",
+    "node:_http_agent",
+    "node:_http_client",
+    "node:_http_common",
+    "node:_http_incoming",
+    "node:_http_outgoing",
+    "node:_http_server",
+    "node:_stream_duplex",
+    "node:_stream_passthrough",
+    "node:_stream_readable",
+    "node:_stream_transform",
+    "node:_stream_wrap",
+    "node:_stream_writable",
+    "node:_tls_common",
+    "node:_tls_wrap",
+    "node:assert",
+    "node:assert/strict",
+    "node:async_hooks",
+    "node:buffer",
+    "node:cluster",
+    "node:console",
+    "node:constants",
+    "node:diagnostics_channel",
+    "node:dns",
+    "node:dns/promises",
+    "node:domain",
+    "node:events",
+    "node:inspector",
+    "node:inspector/promises",
+    "node:path/posix",
+    "node:path/win32",
+    "node:perf_hooks",
+    "node:process",
+    "node:punycode",
+    "node:querystring",
+    "node:readline",
+    "node:readline/promises",
+    "node:repl",
+    "node:sea",
+    "node:sqlite",
+    "node:stream",
+    "node:stream/consumers",
+    "node:stream/promises",
+    "node:stream/web",
+    "node:string_decoder",
+    "node:sys",
+    "node:test",
+    "node:test/reporters",
+    "node:trace_events",
+    "node:tty",
+    "node:util/types",
+    "node:v8",
+    "node:wasi",
+    "node:worker_threads",
+    "node:zlib",
+    "os",
+    "path",
+    "path/posix",
+    "path/win32",
+    "perf_hooks",
+    "process",
+    "punycode",
+    "querystring",
+    "readline",
+    "readline/promises",
+    "repl",
+    "stream",
+    "stream/consumers",
+    "stream/promises",
+    "stream/web",
+    "string_decoder",
+    "sys",
+    "timers",
+    "timers/promises",
+    "tls",
+    "trace_events",
+    "tty",
+    "url",
+    "util",
+    "util/types",
+    "v8",
+    "vm",
+    "wasi",
+    "worker_threads",
+    "zlib"
   ],
   "globalReadTokens": [
     "Promise",
@@ -1975,13 +2641,35 @@
       ]
     },
     {
-      "id": "line.sync.createDeadline-call",
+      "id": "line.sync.dryrun.createDeadline-call",
       "unit": "line",
       "kind": "timer-line",
       "file": "src/sync/run.mjs",
       "path": "runSync",
       "raw": "    const discordDeadline = createDeadline(Math.max(1, Math.min(budget.discordMs, deadlines.discord - now())));",
       "occurrence": 1,
+      "sha256": "9bd8d744ca2653c2ca367d7399122e91aab702acfdacf754d696d064cebc5008",
+      "anchors": [
+        {
+          "token": "createDeadline",
+          "count": 1
+        }
+      ],
+      "controls": [
+        {
+          "raw": "if (dryRun) {",
+          "sha256": "a363ddc858f5003987f94420b4155a74384d97472830e129666262aed37e89e3"
+        }
+      ]
+    },
+    {
+      "id": "line.sync.createDeadline-call",
+      "unit": "line",
+      "kind": "timer-line",
+      "file": "src/sync/run.mjs",
+      "path": "runSync",
+      "raw": "    const discordDeadline = createDeadline(Math.max(1, Math.min(budget.discordMs, deadlines.discord - now())));",
+      "occurrence": 2,
       "sha256": "9bd8d744ca2653c2ca367d7399122e91aab702acfdacf754d696d064cebc5008",
       "anchors": [
         {
@@ -1998,6 +2686,36 @@
     },
     {
       "body": {
+        "raw": "  if (dryRun) {\n    const discordDeadline = createDeadline(Math.max(1, Math.min(budget.discordMs, deadlines.discord - now())));\n    const dryRunIncomplete = [];\n    let result;\n    try {\n      result = await runPass({ ...context, discordDeadline, dryRunIncomplete });\n    } finally {\n      discordDeadline.dispose();\n    }",
+        "sha256": "02da4a8cc7c0b8d21bbe6d6014d4d51f2c36d08135313f6a095f63b7c2de3753"
+      },
+      "id": "line.sync.dryrun.dispose",
+      "unit": "line",
+      "kind": "timer-line",
+      "file": "src/sync/run.mjs",
+      "path": "runSync",
+      "raw": "      discordDeadline.dispose();",
+      "occurrence": 1,
+      "sha256": "789027e8caa49dad6dee91524711ead7ce114d13d833eb6b0884c21fd9f3ac41",
+      "anchors": [
+        {
+          "token": "dispose",
+          "count": 1
+        }
+      ],
+      "controls": [
+        {
+          "raw": "finally {",
+          "sha256": "c4ed399760e348f4bec7a7f52d450a64f6f0d818e48d9714c04b389847b9fbfe"
+        },
+        {
+          "raw": "if (dryRun) {",
+          "sha256": "a363ddc858f5003987f94420b4155a74384d97472830e129666262aed37e89e3"
+        }
+      ]
+    },
+    {
+      "body": {
         "raw": "    runs += 1;\n    const discordDeadline = createDeadline(Math.max(1, Math.min(budget.discordMs, deadlines.discord - now())));\n    try {\n      last = await runPass({ ...context, discordDeadline });\n    } finally {\n      discordDeadline.dispose();\n      await release(lock);\n    }",
         "sha256": "81c2d1c7129dcac5330fd11d8d33c84114f7997c88ad9c0fe08324cea251abfc"
       },
@@ -2007,7 +2725,7 @@
       "file": "src/sync/run.mjs",
       "path": "runSync",
       "raw": "      discordDeadline.dispose();",
-      "occurrence": 1,
+      "occurrence": 2,
       "sha256": "789027e8caa49dad6dee91524711ead7ce114d13d833eb6b0884c21fd9f3ac41",
       "anchors": [
         {

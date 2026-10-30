@@ -1752,3 +1752,564 @@ test('NQ5_later_owner_pick_after_race_wins_and_stays_linked', async () => {
     assert.equal(row.log, picked.log, 'quiet sync adds no card-log event');
   }
 });
+
+// NOTE-1: a conflict that the log orders before a board pick must not be ended by a quiet sync.
+const NOTE1_MIN = 60 * 1_000;
+const NOTE1_MEMBER = '999999999999999999';
+
+async function note1Linked(env) {
+  const card = await env.newCard();
+  const thread = env.seedThread({ name: card.title, appliedTags: [env.tags.idea], content: card.original });
+  await linkCard(env, card, thread);
+  await env.run();
+  return { card, thread };
+}
+
+async function note1RaceCard(env, card, thread) {
+  await boardPick(env, card, 'done');
+  const hold = env.fake.hooks.holdNext({ method: 'PATCH', path: `/channels/${thread.id}` });
+  const pending = env.run();
+  await hold.arrived;
+  env.clock.advance(300);
+  env.fake.hooks.delayAuditVisibility();
+  env.fake.hooks.ownerSetTags({ threadId: thread.id, appliedTags: [env.tags.held] });
+  env.fake.hooks.ownerSetTags({ threadId: thread.id, appliedTags: [env.tags.planned], userId: NOTE1_MEMBER });
+  env.clock.advance(300);
+  hold.release();
+  await pending;
+  env.fake.hooks.releaseAuditVisibility();
+}
+
+async function note1Snap(env, card, thread) {
+  const c = await env.card(card.id);
+  const got = await env.plainClient.getThread(thread.id);
+  const remote = got.data.applied_tags
+    .map((id) => Object.keys(env.tags).find((key) => env.tags[key] === id)).filter(Boolean);
+  const receipts = receiptEvents(env).filter((r) => !/^sync-(start|complete)$/.test(r.event));
+  return {
+    state: c.discordState, remote, log: c.log.length, mut: env.mutations().length,
+    rc: receipts.length, writes: env.readState().recentWrites.length,
+  };
+}
+
+async function note1Quiet(env, card, thread, n = 4) {
+  const rows = [];
+  for (let i = 0; i < n; i += 1) {
+    env.clock.advance(10 * NOTE1_MIN);
+    await env.run();
+    rows.push(await note1Snap(env, card, thread));
+  }
+  return rows;
+}
+
+function assertNote1Flat(rows, base, msg) {
+  for (const row of rows) {
+    assert.deepEqual(row.remote, base.remote, `${msg}: remote unchanged`);
+    assert.equal(row.mut, base.mut, `${msg}: no PATCH`);
+    assert.equal(row.log, base.log, `${msg}: no card-log event`);
+    assert.equal(row.rc, base.rc, `${msg}: no receipt`);
+    assert.equal(row.writes, base.writes, `${msg}: no recentWrites entry`);
+  }
+}
+
+// Conflict, then the owner picks 'done' and sets 'building' gap ms apart (order unproven).
+async function note1UnprovenConflict(env, card, thread, gap) {
+  await note1RaceCard(env, card, thread);
+  env.clock.advance(6 * NOTE1_MIN);
+  await env.run();
+  env.clock.advance(NOTE1_MIN);
+  if (gap > 0) {
+    await boardPick(env, card, 'done');
+    env.clock.advance(gap);
+    env.fake.hooks.ownerSetTags({ threadId: thread.id, appliedTags: [env.tags.building] });
+  } else {
+    env.fake.hooks.ownerSetTags({ threadId: thread.id, appliedTags: [env.tags.building] });
+    env.clock.advance(-gap);
+    await boardPick(env, card, 'done');
+  }
+  env.clock.advance(NOTE1_MIN);
+  await env.run();
+}
+
+for (const gap of [500, -500]) {
+  test(`Test_Sync_unproven_pick_and_phone_in_conflict_gap_${gap}ms_is_not_overwritten_later`, async () => {
+    const env = await setup();
+    const { card, thread } = await note1Linked(env);
+    await note1UnprovenConflict(env, card, thread, gap);
+    const unproven = await note1Snap(env, card, thread);
+    assert.equal(unproven.state, 'conflict');
+    const rows = await note1Quiet(env, card, thread);
+    assert.equal(unproven.remote.join(), 'building');
+    assertNote1Flat(rows, unproven, 'quiet');
+  });
+}
+
+test('Test_Sync_member_conflict_then_unproven_pick_and_phone_is_not_overwritten_later', async () => {
+  const env = await setup();
+  const { card, thread } = await note1Linked(env);
+  env.clock.advance(NOTE1_MIN);
+  env.fake.hooks.ownerSetTags({ threadId: thread.id, appliedTags: [env.tags.researching], userId: NOTE1_MEMBER });
+  env.clock.advance(NOTE1_MIN);
+  await env.run();
+  assert.equal((await env.card(card.id)).discordState, 'conflict');
+  env.clock.advance(NOTE1_MIN);
+  await boardPick(env, card, 'done');
+  env.clock.advance(500);
+  env.fake.hooks.ownerSetTags({ threadId: thread.id, appliedTags: [env.tags.building] });
+  env.clock.advance(NOTE1_MIN);
+  await env.run();
+  const unproven = await note1Snap(env, card, thread);
+  assert.equal(unproven.state, 'conflict');
+  assertNote1Flat(await note1Quiet(env, card, thread), unproven, 'quiet');
+});
+
+for (const offset of [0, 1, 100, 1_000, 60_000]) {
+  test(`Test_Sync_genuine_pick_${offset}ms_after_unproven_conflict_wins_and_stays_linked`, async () => {
+    const env = await setup();
+    const { card, thread } = await note1Linked(env);
+    await note1UnprovenConflict(env, card, thread, 500);
+    assert.equal((await note1Snap(env, card, thread)).state, 'conflict');
+    env.clock.advance(offset);
+    await boardPick(env, card, 'held');
+    env.clock.advance(NOTE1_MIN);
+    await env.run();
+    const picked = await note1Snap(env, card, thread);
+    assert.equal(picked.state, 'linked');
+    assert.deepEqual(picked.remote, ['held']);
+    assertNote1Flat(await note1Quiet(env, card, thread), picked, 'quiet after pick');
+  });
+}
+
+async function note1LastConflictReason(env, card) {
+  return (await env.card(card.id)).log.filter((entry) => entry.change === 'conflict').at(-1)?.reason ?? null;
+}
+
+// Phone 'building', then a provably later board pick 'planned'. A failed audit read logs a
+// 'partial-audit' conflict after the pick (it could not decide); the pick must still win on the
+// next complete read. Round-1 cleared the pick on any conflict and lost it here.
+for (const failAudit of [true, false]) {
+  test(`Test_Sync_phone_then_later_board_pick_survives_failed_audit_${failAudit}`, async () => {
+    const env = await setup();
+    const { card, thread } = await note1Linked(env);
+    env.clock.advance(NOTE1_MIN);
+    env.fake.hooks.ownerSetTags({ threadId: thread.id, appliedTags: [env.tags.researching], userId: NOTE1_MEMBER });
+    env.clock.advance(NOTE1_MIN);
+    await env.run();
+    assert.equal((await env.card(card.id)).discordState, 'conflict');
+    env.clock.advance(NOTE1_MIN);
+    env.fake.hooks.ownerSetTags({ threadId: thread.id, appliedTags: [env.tags.building] });
+    env.clock.advance(NOTE1_MIN);
+    await boardPick(env, card, 'planned');
+    env.clock.advance(NOTE1_MIN);
+    if (failAudit) {
+      env.fake.hooks.forceStatus({
+        method: 'GET', path: /\/audit-logs$/, status: 500, body: { message: 'synthetic' }, times: 2,
+      });
+    }
+    await env.run();
+    if (failAudit) {
+      assert.equal((await env.card(card.id)).discordState, 'conflict');
+      assert.equal(await note1LastConflictReason(env, card), 'partial-audit');
+    }
+    env.clock.advance(NOTE1_MIN);
+    await env.run();
+    const picked = await note1Snap(env, card, thread);
+    assert.equal(picked.state, 'linked');
+    assert.deepEqual(picked.remote, ['planned']);
+    assert.equal((await env.card(card.id)).status, 'planned');
+    assertNote1Flat(await note1Quiet(env, card, thread), picked, 'quiet after pick');
+  });
+}
+
+// Board pick, then a member (unknown actor) change after it: reconcile cannot decide and logs
+// 'unknown-actor'. Quiet syncs must not write, log or PATCH anything.
+test('Test_Sync_member_change_after_board_pick_stays_conflicted_without_writes', async () => {
+  const env = await setup();
+  const { card, thread } = await note1Linked(env);
+  env.clock.advance(NOTE1_MIN);
+  env.fake.hooks.ownerSetTags({ threadId: thread.id, appliedTags: [env.tags.researching], userId: NOTE1_MEMBER });
+  env.clock.advance(NOTE1_MIN);
+  await env.run();
+  assert.equal((await env.card(card.id)).discordState, 'conflict');
+  env.clock.advance(NOTE1_MIN);
+  await boardPick(env, card, 'done');
+  env.clock.advance(NOTE1_MIN);
+  env.fake.hooks.ownerSetTags({ threadId: thread.id, appliedTags: [env.tags.held], userId: NOTE1_MEMBER });
+  env.clock.advance(NOTE1_MIN);
+  await env.run();
+  const unknown = await note1Snap(env, card, thread);
+  assert.equal(unknown.state, 'conflict');
+  assert.equal(unknown.mut, 0, 'the sync that logs unknown-actor writes nothing');
+  assert.deepEqual(unknown.remote, ['held']);
+  assert.equal(await note1LastConflictReason(env, card), 'unknown-actor');
+  assertNote1Flat(await note1Quiet(env, card, thread), unknown, 'quiet');
+  env.clock.advance(5 * NOTE1_MIN);
+  await boardPick(env, card, 'planned');
+  env.clock.advance(NOTE1_MIN);
+  await env.run();
+  const repicked = await note1Snap(env, card, thread);
+  assert.equal(repicked.state, 'linked');
+  assert.deepEqual(repicked.remote, ['planned']);
+  assertNote1Flat(await note1Quiet(env, card, thread), repicked, 'quiet after new pick');
+});
+
+// Board pick, then two owner phone values in the same millisecond: reconcile cannot order them and
+// logs 'ambiguous-owner-order' before any pick comparison. Quiet syncs must not write or log.
+test('Test_Sync_same_millisecond_owner_values_after_board_pick_stay_conflicted_without_writes', async () => {
+  const env = await setup();
+  const { card, thread } = await note1Linked(env);
+  env.clock.advance(NOTE1_MIN);
+  env.fake.hooks.ownerSetTags({ threadId: thread.id, appliedTags: [env.tags.researching], userId: NOTE1_MEMBER });
+  env.clock.advance(NOTE1_MIN);
+  await env.run();
+  assert.equal((await env.card(card.id)).discordState, 'conflict');
+  env.clock.advance(NOTE1_MIN);
+  await boardPick(env, card, 'done');
+  env.clock.advance(NOTE1_MIN);
+  env.fake.hooks.ownerSetTags({ threadId: thread.id, appliedTags: [env.tags.building] });
+  env.fake.hooks.ownerSetTags({ threadId: thread.id, appliedTags: [env.tags.held] });
+  env.clock.advance(NOTE1_MIN);
+  await env.run();
+  const ambiguous = await note1Snap(env, card, thread);
+  assert.equal(ambiguous.state, 'conflict');
+  assert.equal(ambiguous.mut, 0, 'the sync that logs ambiguous-owner-order writes nothing');
+  assert.deepEqual(ambiguous.remote, ['held']);
+  assert.equal(await note1LastConflictReason(env, card), 'ambiguous-owner-order');
+  assertNote1Flat(await note1Quiet(env, card, thread), ambiguous, 'quiet');
+});
+
+async function named(env, card, eventId) {
+  return (await env.card(card.id)).log.filter((e) => e.change === 'conflict' && e.evidence === eventId).length;
+}
+
+async function lastBoardPickId(env, card) {
+  return (await env.card(card.id)).log.filter((e) => e.actor === 'owner' && e.via === 'board').at(-1).eventId;
+}
+
+const snowflakeAt = (ms) => ((BigInt(ms) - 1420070400000n) << 22n).toString();
+
+// Judged-pick tests (round 3): a pick whose evidence a sync has compared is named once and never
+// ends the conflict later.
+for (const status of [500, 429]) {
+  test(`Test_Sync_unproven_pick_after_a_failed_audit_read_${status}_keeps_the_phone_value`, async () => {
+    const env = await setup();
+    const { card, thread } = await note1Linked(env);
+    env.clock.advance(NOTE1_MIN);
+    env.fake.hooks.ownerSetTags({ threadId: thread.id, appliedTags: [env.tags.researching], userId: NOTE1_MEMBER });
+    env.clock.advance(NOTE1_MIN);
+    await env.run();
+    env.clock.advance(NOTE1_MIN);
+    const pickId = `board-${env.clock.now()}-done`;
+    await boardPick(env, card, 'done');
+    env.clock.advance(500);
+    env.fake.hooks.ownerSetTags({ threadId: thread.id, appliedTags: [env.tags.building] });
+    env.clock.advance(NOTE1_MIN);
+    env.fake.hooks.forceStatus({
+      method: 'GET', path: /\/audit-logs$/, status, body: { message: 'synthetic' }, times: 2,
+    });
+    await env.run();
+    const first = await note1Snap(env, card, thread);
+    assert.equal(first.state, 'conflict');
+    if (status === 500) assert.equal(await named(env, card, pickId), 0, 'a failed read judges nothing');
+    env.clock.advance(NOTE1_MIN);
+    await env.run();
+    const second = await note1Snap(env, card, thread);
+    assert.equal(second.state, 'conflict');
+    assert.deepEqual(second.remote, ['building']);
+    assert.equal((await env.card(card.id)).status, 'done');
+    assert.equal(await named(env, card, pickId), 1);
+    assertNote1Flat(await note1Quiet(env, card, thread), second, 'quiet');
+  });
+}
+
+test('Test_Sync_unproven_pick_whose_phone_value_is_already_a_candidate_is_judged_once', async () => {
+  const env = await setup();
+  const { card, thread } = await note1Linked(env);
+  env.clock.advance(NOTE1_MIN);
+  env.fake.hooks.ownerSetTags({ threadId: thread.id, appliedTags: [env.tags.researching], userId: NOTE1_MEMBER });
+  env.clock.advance(NOTE1_MIN);
+  await env.run();
+  env.clock.advance(NOTE1_MIN);
+  env.fake.hooks.ownerSetTags({ threadId: thread.id, appliedTags: [env.tags.building] });
+  env.clock.advance(NOTE1_MIN);
+  const pickId = `board-${env.clock.now()}-done`;
+  await boardPick(env, card, 'done');
+  env.clock.advance(500);
+  env.fake.hooks.ownerSetTags({ threadId: thread.id, appliedTags: [env.tags.researching] });
+  env.clock.advance(NOTE1_MIN);
+  const result = await env.run();
+  const judged = await note1Snap(env, card, thread);
+  assert.equal(judged.state, 'conflict');
+  assert.deepEqual(judged.remote, ['researching']);
+  assert.equal(await named(env, card, pickId), 1);
+  assert.match(result.notify ?? '', /충돌/);
+  assertNote1Flat(await note1Quiet(env, card, thread), judged, 'quiet');
+});
+
+test('Test_Sync_second_unproven_round_in_the_same_conflict_is_judged_once', async () => {
+  const env = await setup();
+  const { card, thread } = await note1Linked(env);
+  await note1UnprovenConflict(env, card, thread, 500);
+  const firstPick = await lastBoardPickId(env, card);
+  assert.equal(await named(env, card, firstPick), 1);
+  env.clock.advance(5 * NOTE1_MIN);
+  await boardPick(env, card, 'planned');
+  const secondPick = await lastBoardPickId(env, card);
+  env.clock.advance(500);
+  env.fake.hooks.ownerSetTags({ threadId: thread.id, appliedTags: [env.tags.researching] });
+  env.clock.advance(NOTE1_MIN);
+  await env.run();
+  const after = await note1Snap(env, card, thread);
+  assert.equal(after.state, 'conflict');
+  assert.deepEqual(after.remote, ['researching']);
+  assert.equal((await env.card(card.id)).status, 'planned');
+  assert.equal(await named(env, card, firstPick), 1);
+  assert.equal(await named(env, card, secondPick), 1);
+  assertNote1Flat(await note1Quiet(env, card, thread), after, 'quiet');
+});
+
+test('Test_Sync_same_millisecond_owner_values_before_a_later_pick_let_the_pick_win', async () => {
+  const env = await setup();
+  const { card, thread } = await note1Linked(env);
+  env.clock.advance(NOTE1_MIN);
+  env.fake.hooks.ownerSetTags({ threadId: thread.id, appliedTags: [env.tags.researching], userId: NOTE1_MEMBER });
+  env.clock.advance(NOTE1_MIN);
+  await env.run();
+  env.clock.advance(NOTE1_MIN);
+  env.fake.hooks.ownerSetTags({ threadId: thread.id, appliedTags: [env.tags.building] });
+  env.fake.hooks.ownerSetTags({ threadId: thread.id, appliedTags: [env.tags.held] });
+  env.clock.advance(NOTE1_MIN);
+  await boardPick(env, card, 'done');
+  env.clock.advance(NOTE1_MIN);
+  await env.run();
+  // The same-millisecond pair is provably before the pick: reconcile does not judge it and the
+  // pick is pushed by the next sync (plan line 66).
+  assert.equal((await note1Snap(env, card, thread)).state, 'conflict');
+  env.clock.advance(10 * NOTE1_MIN);
+  await env.run();
+  const won = await note1Snap(env, card, thread);
+  assert.equal(won.state, 'linked');
+  assert.deepEqual(won.remote, ['done']);
+  assertNote1Flat(await note1Quiet(env, card, thread), won, 'quiet');
+});
+
+test('Test_Sync_member_change_before_an_unaware_pick_waits_for_a_new_pick', async () => {
+  const env = await setup();
+  const { card, thread } = await note1Linked(env);
+  env.clock.advance(NOTE1_MIN);
+  env.fake.hooks.ownerSetTags({ threadId: thread.id, appliedTags: [env.tags.researching], userId: NOTE1_MEMBER });
+  env.clock.advance(NOTE1_MIN);
+  env.fake.hooks.ownerSetTags({ threadId: thread.id, appliedTags: [env.tags.planned], userId: NOTE1_MEMBER });
+  env.clock.advance(NOTE1_MIN);
+  await boardPick(env, card, 'held');
+  env.clock.advance(NOTE1_MIN);
+  await env.run();
+  const unaware = await note1Snap(env, card, thread);
+  assert.equal(unaware.state, 'conflict');
+  assert.deepEqual(unaware.remote, ['planned']);
+  assertNote1Flat(await note1Quiet(env, card, thread), unaware, 'quiet');
+  env.clock.advance(5 * NOTE1_MIN);
+  await boardPick(env, card, 'held');
+  env.clock.advance(NOTE1_MIN);
+  await env.run();
+  const repicked = await note1Snap(env, card, thread);
+  assert.equal(repicked.state, 'linked');
+  assert.deepEqual(repicked.remote, ['held']);
+  assertNote1Flat(await note1Quiet(env, card, thread), repicked, 'quiet after new pick');
+});
+
+test('Test_Sync_later_owner_value_overwritten_by_another_writer_does_not_let_the_older_pick_win', async () => {
+  const env = await setup();
+  const { card, thread } = await note1Linked(env);
+  env.clock.advance(NOTE1_MIN);
+  env.fake.hooks.ownerSetTags({ threadId: thread.id, appliedTags: [env.tags.researching], userId: NOTE1_MEMBER });
+  env.clock.advance(NOTE1_MIN);
+  await env.run();
+  env.clock.advance(NOTE1_MIN);
+  await boardPick(env, card, 'done');
+  env.clock.advance(60_000);
+  env.fake.hooks.ownerSetTags({ threadId: thread.id, appliedTags: [env.tags.held] });
+  env.clock.advance(1_000);
+  env.fake.hooks.ownerSetTags({ threadId: thread.id, appliedTags: [env.tags.planned], userId: env.fake.ids.botUserId });
+  env.clock.advance(NOTE1_MIN);
+  const before = await note1Snap(env, card, thread);
+  await env.run();
+  const after = await note1Snap(env, card, thread);
+  assert.equal(after.state, 'conflict');
+  assert.deepEqual(after.remote, ['planned']);
+  assert.equal(after.mut, before.mut, 'no PATCH');
+  assertNote1Flat(await note1Quiet(env, card, thread), after, 'quiet');
+});
+
+test('Test_Sync_owner_two_status_tags_after_a_pick_are_kept_on_a_conflict_card', async () => {
+  const env = await setup();
+  const { card, thread } = await note1Linked(env);
+  env.clock.advance(NOTE1_MIN);
+  env.fake.hooks.ownerSetTags({ threadId: thread.id, appliedTags: [env.tags.researching], userId: NOTE1_MEMBER });
+  env.clock.advance(NOTE1_MIN);
+  await env.run();
+  env.clock.advance(NOTE1_MIN);
+  await boardPick(env, card, 'done');
+  env.clock.advance(60_000);
+  env.fake.hooks.ownerSetTags({ threadId: thread.id, appliedTags: [env.tags.building, env.tags.held] });
+  env.clock.advance(NOTE1_MIN);
+  await env.run();
+  const after = await note1Snap(env, card, thread);
+  assert.equal(after.state, 'conflict');
+  assert.deepEqual([...after.remote].sort(), ['building', 'held']);
+  assert.equal((await env.card(card.id)).status, 'done');
+  assert.equal(receiptEvents(env).filter((r) => r.event === 'card-write-failed').length, 0);
+  assertNote1Flat(await note1Quiet(env, card, thread), after, 'quiet');
+});
+
+test('Test_Sync_owner_two_status_tags_after_a_pick_are_kept_on_an_invalid_card', async () => {
+  const env = await setup();
+  const { card, thread } = await note1Linked(env);
+  env.clock.advance(NOTE1_MIN);
+  env.fake.hooks.ownerSetTags({ threadId: thread.id, appliedTags: [env.tags.planned, env.tags.idea], userId: NOTE1_MEMBER });
+  env.clock.advance(NOTE1_MIN);
+  await env.run();
+  assert.equal((await env.card(card.id)).discordState, 'invalid');
+  env.clock.advance(NOTE1_MIN);
+  await boardPick(env, card, 'done');
+  env.clock.advance(60_000);
+  env.fake.hooks.ownerSetTags({ threadId: thread.id, appliedTags: [env.tags.building, env.tags.held] });
+  env.clock.advance(NOTE1_MIN);
+  await env.run();
+  const after = await note1Snap(env, card, thread);
+  assert.equal(after.state, 'invalid');
+  assert.deepEqual([...after.remote].sort(), ['building', 'held']);
+  assert.equal(receiptEvents(env).filter((r) => r.event === 'card-write-failed').length, 0);
+  assertNote1Flat(await note1Quiet(env, card, thread), after, 'quiet');
+});
+
+test('Test_Sync_unproven_pick_read_through_an_aged_cursor_is_judged', async () => {
+  const env = await setup();
+  const { card, thread } = await note1Linked(env);
+  await note1RaceCard(env, card, thread);
+  env.clock.advance(6 * NOTE1_MIN);
+  await env.run();
+  env.clock.advance(NOTE1_MIN);
+  const pickId = `board-${env.clock.now()}-done`;
+  await boardPick(env, card, 'done');
+  env.clock.advance(500);
+  env.fake.hooks.ownerSetTags({ threadId: thread.id, appliedTags: [env.tags.building] });
+  env.clock.advance(NOTE1_MIN);
+  const state = env.readState();
+  await env.store.writeSyncState({
+    ...state,
+    audit: { ...(state.audit ?? {}), lastEntryId: snowflakeAt(env.clock.now() - 46 * 24 * 60 * NOTE1_MIN) },
+  });
+  await env.run();
+  const after = await note1Snap(env, card, thread);
+  assert.equal(after.state, 'conflict');
+  assert.equal(await note1LastConflictReason(env, card), 'partial-audit');
+  assert.equal(await named(env, card, pickId), 1);
+  assert.deepEqual(after.remote, ['building']);
+  assertNote1Flat(await note1Quiet(env, card, thread), after, 'quiet');
+});
+
+for (const shape of ['zero', 'two']) {
+  test(`Test_Sync_${shape}_status_tags_after_a_judged_pick_stay_flat`, async () => {
+    const env = await setup();
+    const { card, thread } = await note1Linked(env);
+    await note1UnprovenConflict(env, card, thread, 500);
+    const judged = await note1Snap(env, card, thread);
+    assert.equal(judged.state, 'conflict');
+    const appliedTags = shape === 'zero' ? [] : [env.tags.planned, env.tags.idea];
+    env.fake.hooks.ownerSetTags({ threadId: thread.id, appliedTags, userId: NOTE1_MEMBER });
+    env.clock.advance(NOTE1_MIN);
+    await env.run();
+    const changed = await note1Snap(env, card, thread);
+    assert.equal(changed.mut, judged.mut, 'no PATCH after the judgment');
+    assert.ok(changed.log - judged.log <= 1, 'at most one new entry');
+    assertNote1Flat(await note1Quiet(env, card, thread), changed, 'quiet');
+  });
+}
+
+// Pending-op board pick: the op api.mjs guardedWrite leaves when its write-through does not
+// finish. The sync must decide that pick once. A second decision of the same audit delta in the
+// same sync turned the pick into an owner take (NOTE-1 round 3, GR3-B1).
+async function note1PendingPick(env, card, thread, to) {
+  const eventId = await boardPick(env, card, to);
+  const state = env.readState();
+  await env.store.writeSyncState({
+    ...state,
+    pending: [...(state.pending ?? []), {
+      kind: 'status', key: `note1-${eventId}`, thread: thread.id, cardId: card.id,
+      t0: iso(env.clock.now()), eventId,
+    }],
+  });
+  return eventId;
+}
+
+async function note1MemberConflict(env, card, thread) {
+  env.clock.advance(NOTE1_MIN);
+  env.fake.hooks.ownerSetTags({ threadId: thread.id, appliedTags: [env.tags.researching], userId: NOTE1_MEMBER });
+  env.clock.advance(NOTE1_MIN);
+  await env.run();
+  assert.equal((await env.card(card.id)).discordState, 'conflict');
+}
+
+// Conflict, then a pending board pick 'done' and a phone 'building' gap ms apart (order unproven).
+async function note1PendingUnproven(env, card, thread, gap) {
+  await note1MemberConflict(env, card, thread);
+  env.clock.advance(NOTE1_MIN);
+  if (gap > 0) {
+    await note1PendingPick(env, card, thread, 'done');
+    env.clock.advance(gap);
+    env.fake.hooks.ownerSetTags({ threadId: thread.id, appliedTags: [env.tags.building] });
+  } else {
+    env.fake.hooks.ownerSetTags({ threadId: thread.id, appliedTags: [env.tags.building] });
+    env.clock.advance(-gap);
+    await note1PendingPick(env, card, thread, 'done');
+  }
+  env.clock.advance(NOTE1_MIN);
+  await env.run();
+}
+
+for (const gap of [500, -500]) {
+  test(`Test_Sync_pending_board_pick_and_phone_gap_${gap}ms_stays_conflicted_over_quiet_syncs`, async () => {
+    const env = await setup();
+    const { card, thread } = await note1Linked(env);
+    await note1PendingUnproven(env, card, thread, gap);
+    const s1 = await note1Snap(env, card, thread);
+    assert.equal(s1.state, 'conflict');
+    assert.equal((await env.card(card.id)).status, 'done');
+    assert.deepEqual(s1.remote, ['building']);
+    assertNote1Flat(await note1Quiet(env, card, thread), s1, 'quiet');
+  });
+}
+
+test('Test_Sync_pending_board_pick_then_provably_later_phone_takes_the_phone', async () => {
+  const env = await setup();
+  const { card, thread } = await note1Linked(env);
+  await note1MemberConflict(env, card, thread);
+  env.clock.advance(NOTE1_MIN);
+  await note1PendingPick(env, card, thread, 'done');
+  env.clock.advance(NOTE1_MIN);
+  env.fake.hooks.ownerSetTags({ threadId: thread.id, appliedTags: [env.tags.building] });
+  env.clock.advance(NOTE1_MIN);
+  await env.run();
+  const s1 = await note1Snap(env, card, thread);
+  assert.equal(s1.state, 'linked');
+  assert.deepEqual(s1.remote, ['building']);
+  assertNote1Flat(await note1Quiet(env, card, thread), s1, 'quiet');
+});
+
+for (const offset of [0, 1, 100, 1_000, 60_000]) {
+  test(`Test_Sync_pending_genuine_pick_${offset}ms_after_unproven_conflict_wins_and_stays_linked`, async () => {
+    const env = await setup();
+    const { card, thread } = await note1Linked(env);
+    await note1PendingUnproven(env, card, thread, 500);
+    assert.equal((await note1Snap(env, card, thread)).state, 'conflict');
+    env.clock.advance(offset);
+    await note1PendingPick(env, card, thread, 'held');
+    env.clock.advance(NOTE1_MIN);
+    await env.run();
+    const picked = await note1Snap(env, card, thread);
+    assert.equal(picked.state, 'linked');
+    assert.deepEqual(picked.remote, ['held']);
+    assertNote1Flat(await note1Quiet(env, card, thread), picked, 'quiet after pick');
+  });
+}

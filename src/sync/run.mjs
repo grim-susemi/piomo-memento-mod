@@ -560,10 +560,11 @@ async function runPass(context) {
     return result.card;
   };
 
-  const applyConflict = async (card, statuses, reasonText) => {
+  const applyConflict = async (card, statuses, reasonText, judgedPick = null) => {
     const discord = [...new Set(statuses.filter(isStatus))];
     if (discord.length === 0) discord.push(card.status);
-    if (card.discordState === 'conflict'
+    if (judgedPick === null
+      && card.discordState === 'conflict'
       && Array.isArray(card.conflictDiscord)
       && card.conflictDiscord.length === discord.length
       && card.conflictDiscord.every((value, index) => value === discord[index])) {
@@ -577,13 +578,16 @@ async function runPass(context) {
       next.conflictCard = next.status;
       next.conflictDiscord = discord;
       next.conflictSince = since;
-    }, { actor: 'memento', via: 'sync', change: 'conflict', reason: reasonText });
+    }, {
+      actor: 'memento', via: 'sync', change: 'conflict', reason: reasonText,
+      ...(judgedPick === null ? {} : { evidence: judgedPick }),
+    });
     if (updated) actions.conflicts += 1;
     return updated ?? card;
   };
 
-  const applyInvalid = async (card, statuses) => {
-    if (card.discordState === 'invalid') return card;
+  const applyInvalid = async (card, statuses, judgedPick = null) => {
+    if (card.discordState === 'invalid' && judgedPick === null) return card;
     const updated = await persistCard(card, (next) => {
       next.discordState = 'invalid';
       delete next.conflictCard;
@@ -592,6 +596,7 @@ async function runPass(context) {
     }, {
       actor: 'memento', via: 'sync', change: 'invalid-remote',
       reason: statuses.length === 0 ? 'no-status-tag' : 'multiple-status-tags',
+      ...(judgedPick === null ? {} : { evidence: judgedPick }),
     });
     if (updated) actions.invalid += 1;
     return updated ?? card;
@@ -640,35 +645,54 @@ async function runPass(context) {
     return updated ?? card;
   };
 
-  // A board pick the log shows already lost to an owner-race conflict (an owner phone value was
-  // restored after it) must not resolve that conflict again on a later quiet sync.
+  // A resolving pick that a sync already judged is named by a conflict entry's evidence. Once
+  // named it no longer resolves, so the same sync must not decide that card again (decidedPending).
+  // Only conflict entries count; sync-push and board-push entries carry the same eventId.
   const RACE_REASONS = new Set(['owner-race', 'recent-write-owner-race']);
   const boardEventsFor = (card) => {
     const events = boardEventsOf(card, state, uncertaintyFor(state.clock));
     const last = events.at(-1);
     if (last?.resolves) {
+      const named = card.log.some((entry) => entry.change === 'conflict' && entry.evidence === last.eventId);
       const pick = card.log.findLastIndex((entry) => entry.actor === 'owner' && entry.via === 'board');
       const raced = card.log.findLastIndex((entry) => entry.change === 'conflict' && RACE_REASONS.has(entry.reason));
-      if (raced > pick) delete last.resolves;
+      if (named || raced > pick) delete last.resolves;
     }
     return events;
   };
   const decide = (card, remoteStatuses, cardEntries) => {
     const since = conflictBoundary(card);
-    return reconcile({
+    const boardEvents = boardEventsFor(card);
+    const decision = reconcile({
       card: {
         status: card.status,
         discordBase: card.discordBase,
         discordState: card.discordState,
-        boardEvents: boardEventsFor(card),
+        boardEvents,
         ...(since === null ? {} : { conflictSince: since }),
       },
       remote: { exists: true, statusTags: remoteStatuses },
       audit: { coverage: audit.coverage, entries: cardEntries },
     });
+    const last = boardEvents.at(-1);
+    return last?.resolves ? { ...decision, pick: last.eventId } : decision;
   };
   const entriesForCard = (card, threadId) =>
     auditEntriesFor(entries, threadId, Date.parse(state.bases[card.id] ?? card.created));
+  // An audit entry leaves the carry only when a judgment on its thread lands from a complete read. Entries
+  // the cursor has moved past but no landed judgment consumed (budget cut, failed fetch or write, failed or
+  // skipped audit read) wait for a later sync. A failed or skipped read judges its carried entries under
+  // partial coverage with no pick named, so that judgment cannot consume them.
+  const settleAudit = (threadId) => {
+    if (!audit.ok) return;
+    state.audit.carry = (state.audit.carry ?? []).filter((entry) => entry.target_id !== threadId);
+  };
+  const settleIfLanded = async (threadId, work) => {
+    const failures = actions.failures;
+    const result = await work();
+    if (actions.failures === failures) settleAudit(threadId);
+    return result;
+  };
 
   // A card already in conflict keeps its candidates (e.g. a raced owner value); reconcile adds the
   // remote values to them instead of replacing them, so no owner value drops out silently.
@@ -676,23 +700,42 @@ async function runPass(context) {
     && Array.isArray(card.conflictDiscord)
     ? [...card.conflictDiscord, ...statuses]
     : statuses;
+  // The audit delta reaches reconcile once (ingestAudit moves the cursor). When a decision on a
+  // successfully read delta neither pushes nor takes a resolving pick, the pick is judged now. A
+  // failed or skipped read names no pick; its carried entries stay carried until a complete read.
+  const judgedPickOf = (decision) => {
+    if (!decision.pick || !audit.ok) return null;
+    const { boardInterval, ownerInterval } = decision.evidence ?? {};
+    // Two owner values in one millisecond, both provably before the pick: the pick wins (plan line 66).
+    if (decision.reason === 'ambiguous-owner-order' && boardInterval && ownerInterval
+      && boardInterval[0] > ownerInterval[1]) return null;
+    return decision.pick;
+  };
   const applyDecision = async (card, decision, remoteStatuses) => {
     if (decision.kind === 'setBase') return applyBase(card, decision.status);
     if (decision.kind === 'take') {
+      // An owner entry later than the pick left 0 or 2+ status tags: nothing valid to take, and the
+      // older pick must not win (plan line 60).
+      if (!isStatus(decision.status)) {
+        const judged = judgedPickOf(decision);
+        return card.discordState === 'conflict'
+          ? applyConflict(card, conflictCandidates(card, remoteStatuses), 'conflict-remote-invalid', judged)
+          : applyInvalid(card, remoteStatuses, judged);
+      }
       return applyTake(card, decision.status, decision.evidence?.ownerEntryId ?? null);
     }
     if (decision.kind === 'markDeleted') return applyDeleted(card);
     if (decision.kind === 'invalidRemote') {
       if (card.discordState === 'conflict') {
-        return applyConflict(card, conflictCandidates(card, remoteStatuses), 'conflict-remote-invalid');
+        return applyConflict(card, conflictCandidates(card, remoteStatuses), 'conflict-remote-invalid', judgedPickOf(decision));
       }
-      return applyInvalid(card, remoteStatuses);
+      return applyInvalid(card, remoteStatuses, judgedPickOf(decision));
     }
     if (decision.kind === 'conflict') {
       if (card.discordState === 'conflict' && decision.reason === 'unresolved-conflict') {
         return card;
       }
-      return applyConflict(card, conflictCandidates(card, remoteStatuses), decision.reason ?? 'conflict');
+      return applyConflict(card, conflictCandidates(card, remoteStatuses), decision.reason ?? 'conflict', judgedPickOf(decision));
     }
     return card;
   };
@@ -816,9 +859,11 @@ async function runPass(context) {
     }
     const freshStatuses = statusesOf(fresh.data?.applied_tags, state.tagIds);
     const redo = decide(card, freshStatuses, entriesForCard(card, thread.id));
+    const failuresAtDecide = actions.failures;
     if (redo.kind !== 'push') {
       state.pending = state.pending.filter((entry) => entry.key !== op.key);
       await applyDecision(card, redo, freshStatuses);
+      if (actions.failures === failuresAtDecide) settleAudit(thread.id);
       return { ok: false, reason: `recheck-${redo.kind}` };
     }
     const written = await patchStatus({
@@ -868,6 +913,7 @@ async function runPass(context) {
           record(receipts, { event: 'owner-restore-unavailable', id: card.id, key });
         }
       }
+      if (actions.failures === failuresAtDecide) settleAudit(thread.id);
       return written;
     }
     const current = cards.get(card.id) ?? card;
@@ -897,6 +943,7 @@ async function runPass(context) {
       state.bases[card.id] = iso(written.patchAt);
       actions.pushed += 1;
     }
+    if (actions.failures === failuresAtDecide) settleAudit(thread.id);
     return written;
   };
 
@@ -1381,6 +1428,9 @@ async function runPass(context) {
     return keep(restored.status ?? restored.error ?? 'failed', 'owner-restore-retry');
   };
 
+  // Cards the pending loop decided in this sync. Their audit delta was judged here; the main loop
+  // must not judge it again (a second judgment un-resolves a pick named just above).
+  const decidedPending = new Set();
   for (const op of [...state.pending]) {
     if (op.kind !== 'status') continue;
     const card = cards.get(op.cardId);
@@ -1392,17 +1442,25 @@ async function runPass(context) {
     const thread = card ? threads.get(op.thread) : null;
     state.pending = state.pending.filter((entry) => entry.key !== op.key);
     if (!card || !thread) continue;
+    // A card can have several unfinished board ops (each failed write-through appends one). The
+    // first op judged the card's audit delta; later ops of that card are covered by it and only
+    // leave the pending list, so no second judgment can un-name a pick the first one resolved.
+    if (decidedPending.has(card.id)) {
+      record(receipts, { event: 'pending-status-subsumed', id: card.id, key: op.key });
+      continue;
+    }
     if (!touchBudget()) {
       state.pending.push(op);
       break;
     }
     const remoteStatuses = statusesOf(thread.applied_tags, state.tagIds);
     const decision = decide(card, remoteStatuses, entriesForCard(card, thread.id));
+    decidedPending.add(card.id);
     record(receipts, {
       event: 'pending-status-resumed', id: card.id, key: op.key, kind: decision.kind,
     });
     if (decision.kind === 'push') await guardedPush(card, thread, audit.cursorAtStart);
-    else await applyDecision(card, decision, remoteStatuses);
+    else await settleIfLanded(thread.id, () => applyDecision(card, decision, remoteStatuses));
   }
 
   await verifyRecentWrites({
@@ -1412,6 +1470,7 @@ async function runPass(context) {
 
   for (const card of [...cards.values()]) {
     if (!card.discordThread || card.discordState === 'deleted') continue;
+    if (decidedPending.has(card.id)) continue;
     if (!touchBudget()) break;
     let thread = threads.get(card.discordThread);
     if (!thread) {
@@ -1426,12 +1485,15 @@ async function runPass(context) {
     }
     const remoteStatuses = statusesOf(thread.applied_tags, state.tagIds);
     const decision = decide(card, remoteStatuses, entriesForCard(card, thread.id));
-    if (decision.kind === 'none') continue;
+    if (decision.kind === 'none') {
+      settleAudit(thread.id);
+      continue;
+    }
     if (decision.kind === 'push') {
       await guardedPush(card, thread, audit.cursorAtStart);
       continue;
     }
-    await applyDecision(card, decision, remoteStatuses);
+    await settleIfLanded(thread.id, () => applyDecision(card, decision, remoteStatuses));
   }
 
   // Step 9: mirror the owner's thread title first (listing data, no HTTP),
@@ -1641,10 +1703,11 @@ function mapAuditEntry(entry, state) {
 async function ingestAudit({ client, state, now, signal, receipts, discordOpen }) {
   const at = typeof now === 'function' ? now() : Number(now);
   const cursor = state.audit.lastEntryId ?? null;
+  const carried = state.audit.carry ?? [];
   if (!discordOpen()) {
     return {
       ok: false, fatal: false, code: 'budget', coverage: 'partial',
-      raw: [], entries: [], cursorAtStart: cursor,
+      raw: carried, entries: [], cursorAtStart: cursor,
     };
   }
   const read = async (actionType) => client.getAuditLog({
@@ -1663,7 +1726,7 @@ async function ingestAudit({ client, state, now, signal, receipts, discordOpen }
       fatal: networkFailure(failed),
       code: failed.status ?? failed.error ?? 'unknown',
       coverage: 'partial',
-      raw: [],
+      raw: carried,
       entries: [],
       cursorAtStart: cursor,
     };
@@ -1684,8 +1747,14 @@ async function ingestAudit({ client, state, now, signal, receipts, discordOpen }
     .sort((left, right) => (BigInt(left.id) < BigInt(right.id) ? -1 : 1));
   if (max && max !== cursor) state.audit.lastEntryId = max;
   if (!state.audit.coveredSince) state.audit.coveredSince = iso(at - AUDIT_RETENTION_MS);
+  // The cursor moves past these entries now, so they are carried until a judgment on their thread lands.
+  const carry = new Map(carried.map((entry) => [entry.id, entry]));
+  for (const entry of tagLog.data) carry.set(entry.id, entry);
+  state.audit.carry = [...carry.values()]
+    .filter((entry) => snowflakeTime(entry.id) > at - AUDIT_RETENTION_MS)
+    .sort((left, right) => (BigInt(left.id) < BigInt(right.id) ? -1 : 1));
   return {
-    ok: true, fatal: false, coverage, raw: tagLog.data, entries: [],
+    ok: true, fatal: false, coverage, raw: state.audit.carry, entries: [],
     cursorAtStart: cursor,
   };
 }

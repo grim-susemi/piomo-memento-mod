@@ -131,9 +131,58 @@
     {
       "id": "predicted.dispose-if-false",
       "file": "src/sync/run.mjs",
-      "find": "      discordDeadline.dispose();",
-      "replace": "      if (false) discordDeadline.dispose();",
+      "find": "      discordDeadline.dispose();\n      await release(lock);",
+      "replace": "      if (false) discordDeadline.dispose();\n      await release(lock);",
       "expectCode": "stale-entry:line.sync.dispose"
+    },
+    {
+      "id": "predicted.dispose-if-false-dryrun",
+      "file": "src/sync/run.mjs",
+      "find": "      discordDeadline.dispose();\n    }\n    const listed = await store.list();",
+      "replace": "      if (false) discordDeadline.dispose();\n    }\n    const listed = await store.list();",
+      "expectCode": "body:line.sync.dryrun.dispose"
+    },
+    {
+      "id": "predicted.dispose-return-gate-dryrun",
+      "file": "src/sync/run.mjs",
+      "find": "    } finally {\n      discordDeadline.dispose();\n    }\n    const listed = await store.list();",
+      "replace": "    } finally {\n      return result;\n      discordDeadline.dispose();\n    }\n    const listed = await store.list();",
+      "expectCode": "body:line.sync.dryrun.dispose"
+    },
+    {
+      "id": "predicted.dispose-throw-gate-dryrun",
+      "file": "src/sync/run.mjs",
+      "find": "    } finally {\n      discordDeadline.dispose();\n    }\n    const listed = await store.list();",
+      "replace": "    } finally {\n      throw new Error('x');\n      discordDeadline.dispose();\n    }\n    const listed = await store.list();",
+      "expectCode": "body:line.sync.dryrun.dispose"
+    },
+    {
+      "id": "predicted.dispose-shadow-handle-dryrun",
+      "file": "src/sync/run.mjs",
+      "find": "    } finally {\n      discordDeadline.dispose();\n    }\n    const listed = await store.list();",
+      "replace": "    } finally {\n      const discordDeadline = { ['dis' + 'pose']() {} };\n      discordDeadline.dispose();\n    }\n    const listed = await store.list();",
+      "expectCode": "body:line.sync.dryrun.dispose"
+    },
+    {
+      "id": "predicted.dispose-break-gate-dryrun",
+      "file": "src/sync/run.mjs",
+      "find": "    } finally {\n      discordDeadline.dispose();\n    }\n    const listed = await store.list();",
+      "replace": "    } finally {\n      gate: { break gate;\n      discordDeadline.dispose();\n      }\n    }\n    const listed = await store.list();",
+      "expectCode": "body:line.sync.dryrun.dispose"
+    },
+    {
+      "id": "predicted.dryrun-createDeadline-call",
+      "file": "src/sync/run.mjs",
+      "find": "  if (dryRun) {\n    const discordDeadline = createDeadline(Math.max(1, Math.min(budget.discordMs, deadlines.discord - now())));",
+      "replace": "  if (dryRun) {\n    const discordDeadline = createDeadline(Math.max(1, budget.discordMs));",
+      "expectCode": "control:line.sync.dryrun.createDeadline-call"
+    },
+    {
+      "id": "predicted.loop-createDeadline-call",
+      "file": "src/sync/run.mjs",
+      "find": "    runs += 1;\n    const discordDeadline = createDeadline(Math.max(1, Math.min(budget.discordMs, deadlines.discord - now())));",
+      "replace": "    runs += 1;\n    const discordDeadline = createDeadline(Math.max(1, budget.discordMs));",
+      "expectCode": "stale-entry:line.sync.createDeadline-call"
     },
     {
       "id": "predicted.unawaited-owner-sleep-a",
@@ -413,6 +462,251 @@
       "find": "    } finally {\n      discordDeadline.dispose();\n      await release(lock);\n    }",
       "replace": "    } finally {\n      return last;\n      discordDeadline.dispose();\n      await release(lock);\n    }\nfunction bodyDecoy() {\n    runs += 1;\n    const discordDeadline = createDeadline(Math.max(1, Math.min(budget.discordMs, deadlines.discord - now())));\n    try {\n      last = await runPass({ ...context, discordDeadline });\n    } finally {\n      discordDeadline.dispose();\n      await release(lock);\n    }\n}",
       "expectCode": "body:line.sync.dispose"
+    },
+    {
+      "id": "predicted.getbuiltin-timers-interval",
+      "file": "src/sync/run.mjs",
+      "find": "function notifyLine(actions) {",
+      "replace": "function notifyLine(actions) {\n  if (actions.failures > 1000) process.getBuiltinModule('node:timers')['set' + 'Interval'](() => {}, 60_000);",
+      "expectCode": "census:getBuiltinModule:src/sync/run.mjs:"
+    },
+    {
+      "id": "predicted.getbuiltin-net-connect",
+      "file": "src/sync/run.mjs",
+      "find": "function notifyLine(actions) {",
+      "replace": "function notifyLine(actions) {\n  if (actions.failures > 1000) process.getBuiltinModule('node:net').connect(443, 'example.com');",
+      "expectCode": "census:getBuiltinModule:src/sync/run.mjs:"
+    },
+    {
+      "id": "predicted.getbuiltin-child-process-spawn",
+      "file": "src/sync/run.mjs",
+      "find": "function notifyLine(actions) {",
+      "replace": "function notifyLine(actions) {\n  if (actions.failures > 1000) process.getBuiltinModule('node:child_process').spawn('node', ['-e', '0']).unref();",
+      "expectCode": "census:getBuiltinModule:src/sync/run.mjs:"
+    },
+    {
+      "id": "predicted.getbuiltin-worker-threads",
+      "file": "src/sync/run.mjs",
+      "find": "function notifyLine(actions) {",
+      "replace": "function notifyLine(actions) {\n  if (actions.failures > 1000) new (process.getBuiltinModule('node:worker_threads').Worker)('./worker.mjs');",
+      "expectCode": "census:getBuiltinModule:src/sync/run.mjs:"
+    },
+    {
+      "id": "predicted.getbuiltin-extension-toplevel",
+      "file": "src/extension.mjs",
+      "find": "    intake?.resetSession('');\n    releaseSlot();\n  });\n\n  return runtime;\n}",
+      "replace": "    intake?.resetSession('');\n    releaseSlot();\n  });\n\n  return runtime;\n}\nprocess.getBuiltinModule('node:timers')['set' + 'Interval'](() => {}, 60_000);",
+      "expectCode": "census:getBuiltinModule:src/extension.mjs:"
+    },
+    {
+      "id": "predicted.r4-websocket-connect",
+      "file": "src/sync/run.mjs",
+      "find": "function notifyLine(actions) {",
+      "replace": "function notifyLine(actions) {\n  if (actions.failures > 1000) new WebSocket('ws://127.0.0.1:9');",
+      "expectCode": "census:WebSocket:src/sync/run.mjs:"
+    },
+    {
+      "id": "predicted.r4-messagechannel-port",
+      "file": "src/sync/run.mjs",
+      "find": "function notifyLine(actions) {",
+      "replace": "function notifyLine(actions) {\n  if (actions.failures > 1000) new MessageChannel().port1.on('message', () => {});",
+      "expectCode": "census:MessageChannel:src/sync/run.mjs:"
+    },
+    {
+      "id": "predicted.r4-broadcastchannel-onmessage",
+      "file": "src/sync/run.mjs",
+      "find": "function notifyLine(actions) {",
+      "replace": "function notifyLine(actions) {\n  if (actions.failures > 1000) new BroadcastChannel('memento').onmessage = () => {};",
+      "expectCode": "census:BroadcastChannel:src/sync/run.mjs:"
+    },
+    {
+      "id": "predicted.r4-stdin-data",
+      "file": "src/sync/run.mjs",
+      "find": "function notifyLine(actions) {",
+      "replace": "function notifyLine(actions) {\n  if (actions.failures > 1000) process.stdin.on('data', () => {});",
+      "expectCode": "census:stdin:src/sync/run.mjs:"
+    },
+    {
+      "id": "predicted.r4-bare-net-connect",
+      "file": "src/extension.mjs",
+      "find": "    intake?.resetSession('');\n    releaseSlot();\n  });\n\n  return runtime;\n}",
+      "replace": "    intake?.resetSession('');\n    releaseSlot();\n  });\n\n  return runtime;\n}\nimport { connect } from 'net';\nconnect(9, '127.0.0.1');",
+      "expectCode": "census:net:src/extension.mjs:"
+    },
+    {
+      "id": "predicted.r4-bare-timers-promises-wait",
+      "file": "src/extension.mjs",
+      "find": "    intake?.resetSession('');\n    releaseSlot();\n  });\n\n  return runtime;\n}",
+      "replace": "    intake?.resetSession('');\n    releaseSlot();\n  });\n\n  return runtime;\n}\nimport { scheduler } from 'timers/promises';\nscheduler.wait(600_000);",
+      "expectCode": "census:timers/promises:src/extension.mjs:"
+    },
+    {
+      "id": "predicted.r4-bare-worker-threads-file",
+      "file": "src/extension.mjs",
+      "find": "    intake?.resetSession('');\n    releaseSlot();\n  });\n\n  return runtime;\n}",
+      "replace": "    intake?.resetSession('');\n    releaseSlot();\n  });\n\n  return runtime;\n}\nimport { Worker } from 'worker_threads';\nnew Worker('./worker.mjs');",
+      "expectCode": "census:worker_threads:src/extension.mjs:"
+    },
+    {
+      "id": "predicted.r4-fs-watch",
+      "file": "src/extension.mjs",
+      "find": "    intake?.resetSession('');\n    releaseSlot();\n  });\n\n  return runtime;\n}",
+      "replace": "    intake?.resetSession('');\n    releaseSlot();\n  });\n\n  return runtime;\n}\nimport { watch } from 'node:fs';\nwatch('.', () => {});",
+      "expectCode": "census:watch:src/extension.mjs:"
+    },
+    {
+      "id": "predicted.r4-fs-watchfile",
+      "file": "src/extension.mjs",
+      "find": "    intake?.resetSession('');\n    releaseSlot();\n  });\n\n  return runtime;\n}",
+      "replace": "    intake?.resetSession('');\n    releaseSlot();\n  });\n\n  return runtime;\n}\nimport { watchFile } from 'node:fs';\nwatchFile('.', () => {});",
+      "expectCode": "census:watchFile:src/extension.mjs:"
+    },
+    {
+      "id": "predicted.r4-binding-tcp",
+      "file": "src/sync/run.mjs",
+      "find": "function notifyLine(actions) {",
+      "replace": "function notifyLine(actions) {\n  if (actions.failures > 1000) process.binding('tcp_wrap');",
+      "expectCode": "census:binding:src/sync/run.mjs:"
+    },
+    {
+      "id": "predicted.r4-dlopen-addon",
+      "file": "src/sync/run.mjs",
+      "find": "function notifyLine(actions) {",
+      "replace": "function notifyLine(actions) {\n  if (actions.failures > 1000) process.dlopen({ exports: {} }, 'x.node');",
+      "expectCode": "census:dlopen:src/sync/run.mjs:"
+    },
+    {
+      "id": "predicted.r4-mainmodule-require",
+      "file": "src/sync/run.mjs",
+      "find": "function notifyLine(actions) {",
+      "replace": "function notifyLine(actions) {\n  if (actions.failures > 1000) process.mainModule.require('node:timers');",
+      "expectCode": "census:mainModule:src/sync/run.mjs:"
+    },
+    {
+      "id": "predicted.r5-openstdin-notifyline",
+      "file": "src/sync/run.mjs",
+      "find": "function notifyLine(actions) {",
+      "replace": "function notifyLine(actions) {\n  if (actions.failures > 1000) process.openStdin().on('data', () => {});",
+      "expectCode": "census:openStdin:src/sync/run.mjs:"
+    },
+    {
+      "id": "predicted.r5-debugprocess-notifyline",
+      "file": "src/sync/run.mjs",
+      "find": "function notifyLine(actions) {",
+      "replace": "function notifyLine(actions) {\n  if (actions.failures > 1000) process._debugProcess(process.pid);",
+      "expectCode": "census:_debugProcess:src/sync/run.mjs:"
+    },
+    {
+      "id": "predicted.r5-fork-git-import",
+      "file": "src/store/git.mjs",
+      "find": "import { execFile } from 'node:child_process';",
+      "replace": "import { execFile, fork } from 'node:child_process';\nfork('./worker.mjs');",
+      "expectCode": "census:fork:src/store/git.mjs:"
+    },
+    {
+      "id": "predicted.r5-spawn-nondetached-git",
+      "file": "src/store/git.mjs",
+      "find": "import { execFile } from 'node:child_process';",
+      "replace": "import { execFile, spawn } from 'node:child_process';\nspawn('git', ['status'], { detached: false });",
+      "expectCode": "census:spawn:src/store/git.mjs:"
+    },
+    {
+      "id": "predicted.r5-childprocess-new-git",
+      "file": "src/store/git.mjs",
+      "find": "import { execFile } from 'node:child_process';",
+      "replace": "import { execFile, ChildProcess } from 'node:child_process';\nnew ChildProcess();",
+      "expectCode": "census:ChildProcess:src/store/git.mjs:"
+    },
+    {
+      "id": "predicted.r5-createreadstream-fd0-extension",
+      "file": "src/extension.mjs",
+      "find": "import { realpathSync } from 'node:fs';",
+      "replace": "import { realpathSync, createReadStream } from 'node:fs';\ncreateReadStream('', { fd: 0 }).on('data', () => {});",
+      "expectCode": "census:createReadStream:src/extension.mjs:"
+    },
+    {
+      "id": "predicted.r5-linkedbinding-notifyline",
+      "file": "src/sync/run.mjs",
+      "find": "function notifyLine(actions) {",
+      "replace": "function notifyLine(actions) {\n  if (actions.failures > 1000) process._linkedBinding('tcp_wrap');",
+      "expectCode": "census:_linkedBinding:src/sync/run.mjs:"
+    },
+    {
+      "id": "predicted.r5-openSync-notifyline",
+      "file": "src/sync/run.mjs",
+      "find": "function notifyLine(actions) {",
+      "replace": "function notifyLine(actions) {\n  if (actions.failures > 1000) openSync('/dev/stdin', 'r');",
+      "expectCode": "census:openSync:src/sync/run.mjs:"
+    },
+    {
+      "id": "predicted.r5-nexttick-notifyline",
+      "file": "src/sync/run.mjs",
+      "find": "function notifyLine(actions) {",
+      "replace": "function notifyLine(actions) {\n  if (actions.failures > 1000) process.nextTick(() => {});",
+      "expectCode": "census:nextTick:src/sync/run.mjs:"
+    },
+    {
+      "id": "predicted.r5-addlistener-notifyline",
+      "file": "src/sync/run.mjs",
+      "find": "function notifyLine(actions) {",
+      "replace": "function notifyLine(actions) {\n  if (actions.failures > 1000) process.addListener('SIGINT', () => {});",
+      "expectCode": "census:addListener:src/sync/run.mjs:"
+    },
+    {
+      "id": "predicted.r5-ref-notifyline",
+      "file": "src/sync/run.mjs",
+      "find": "function notifyLine(actions) {",
+      "replace": "function notifyLine(actions) {\n  if (actions.failures > 1000) actions.handle.ref();",
+      "expectCode": "census:ref:src/sync/run.mjs:"
+    },
+    {
+      "id": "predicted.r5-performanceobserver-notifyline",
+      "file": "src/sync/run.mjs",
+      "find": "function notifyLine(actions) {",
+      "replace": "function notifyLine(actions) {\n  if (actions.failures > 1000) new PerformanceObserver(() => {}).observe({ entryTypes: ['gc'] });",
+      "expectCode": "census:PerformanceObserver:src/sync/run.mjs:"
+    },
+    {
+      "id": "predicted.r6-atomics-waitasync-notifyline",
+      "file": "src/sync/run.mjs",
+      "find": "function notifyLine(actions) {",
+      "replace": "function notifyLine(actions) {\n  if (actions.failures > 1000) Atomics.waitAsync(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 1000).value.then(() => {});",
+      "expectCode": "census:Atomics:src/sync/run.mjs:"
+    },
+    {
+      "id": "predicted.r6-readv-fd0-extension",
+      "file": "src/extension.mjs",
+      "find": "import { realpathSync } from 'node:fs';",
+      "replace": "import { realpathSync, readv } from 'node:fs';\nreadv(0, [Buffer.alloc(64)], () => {});",
+      "expectCode": "census:readv:src/extension.mjs:"
+    },
+    {
+      "id": "predicted.r6-finalizationregistry-notifyline",
+      "file": "src/sync/run.mjs",
+      "find": "function notifyLine(actions) {",
+      "replace": "function notifyLine(actions) {\n  if (actions.failures > 1000) new FinalizationRegistry(() => {}).register({});",
+      "expectCode": "census:FinalizationRegistry:src/sync/run.mjs:"
+    },
+    {
+      "id": "predicted.r6-finalization-notifyline",
+      "file": "src/sync/run.mjs",
+      "find": "function notifyLine(actions) {",
+      "replace": "function notifyLine(actions) {\n  if (actions.failures > 1000) process.finalization.register({}, () => {});",
+      "expectCode": "census:finalization:src/sync/run.mjs:"
+    },
+    {
+      "id": "predicted.r6-setuncaughtcapture-notifyline",
+      "file": "src/sync/run.mjs",
+      "find": "function notifyLine(actions) {",
+      "replace": "function notifyLine(actions) {\n  if (actions.failures > 1000) process.setUncaughtExceptionCaptureCallback(() => {});",
+      "expectCode": "census:setUncaughtExceptionCaptureCallback:src/sync/run.mjs:"
+    },
+    {
+      "id": "predicted.r7-performance-listener-notifyline",
+      "file": "src/sync/run.mjs",
+      "find": "function notifyLine(actions) {",
+      "replace": "function notifyLine(actions) {\n  if (actions.failures > 1000) performance.addEventListener('resourcetimingbufferfull', () => {});",
+      "expectCode": "census:performance:src/sync/run.mjs:"
     }
   ]
 }
