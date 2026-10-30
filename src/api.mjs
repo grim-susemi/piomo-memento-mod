@@ -404,7 +404,7 @@ export function createBoardApi(options = {}) {
     return { ok: true, card: current.card, superseded: latest?.eventId !== eventId };
   }
 
-  async function applyConflict(card, statuses, reason, sinceOverride = null) {
+  async function applyConflict(card, statuses, reason, sinceOverride = null, judgedPick = null) {
     const discord = [...new Set(statuses.filter(isStatus))];
     if (discord.length === 0) discord.push(card.status);
     const current = await store.get(card.id);
@@ -413,16 +413,21 @@ export function createBoardApi(options = {}) {
       && Array.isArray(current.card.conflictDiscord)
       && current.card.conflictDiscord.length === discord.length
       && current.card.conflictDiscord.every((value, index) => value === discord[index]);
-    if (already) return current.card;
-    const since = current.card.discordState === 'conflict' && current.card.conflictSince
-      ? current.card.conflictSince
-      : (sinceOverride ?? iso(clockNow()));
+    if (judgedPick === null && already) return current.card;
+    // A judgement that named a resolving board pick restarts the boundary (round-2 rule, as in run.mjs).
+    const since = judgedPick !== null ? iso(clockNow())
+      : current.card.discordState === 'conflict' && current.card.conflictSince
+        ? current.card.conflictSince
+        : (sinceOverride ?? iso(clockNow()));
     return applyCard(card.id, (next) => {
       next.discordState = 'conflict';
       next.conflictCard = next.status;
       next.conflictDiscord = discord;
       next.conflictSince = since;
-    }, { actor: 'memento', via: 'sync', change: 'conflict', reason });
+    }, {
+      actor: 'memento', via: 'sync', change: 'conflict', reason,
+      ...(judgedPick === null ? {} : { evidence: judgedPick }),
+    });
   }
 
   async function applyInvalid(card, statuses) {
@@ -513,7 +518,7 @@ export function createBoardApi(options = {}) {
       return applyInvalid(card, remoteStatuses);
     }
     if (decision.kind === 'conflict') {
-      return applyConflict(card, remoteStatuses, decision.reason ?? 'conflict');
+      return applyConflict(card, remoteStatuses, decision.reason ?? 'conflict', null, card.discordState === 'conflict' ? eventId : null);
     }
     return card;
   }
@@ -617,6 +622,7 @@ export function createBoardApi(options = {}) {
           discordState: current.discordState,
           boardEvents: boardEventsOf(current, state, uncertaintyFor(state.clock)),
           ...(since === null ? {} : { conflictSince: since }),
+          conflictDiscord: current.conflictDiscord,
         },
         remote: { exists: true, statusTags: remoteStatuses },
         audit: { coverage: coverageFor(state, t0, baseAt), entries },

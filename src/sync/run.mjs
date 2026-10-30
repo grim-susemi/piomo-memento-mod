@@ -560,7 +560,7 @@ async function runPass(context) {
     return result.card;
   };
 
-  const applyConflict = async (card, statuses, reasonText, judgedPick = null) => {
+  const applyConflict = async (card, statuses, reasonText, judgedPick = null, restartSince = false) => {
     const discord = [...new Set(statuses.filter(isStatus))];
     if (discord.length === 0) discord.push(card.status);
     if (judgedPick === null
@@ -570,7 +570,9 @@ async function runPass(context) {
       && card.conflictDiscord.every((value, index) => value === discord[index])) {
       return card;
     }
-    const since = card.discordState === 'conflict' && card.conflictSince
+    // A judgement that named a resolving pick restarts the boundary: an owner entry older than the
+    // judgement was hidden when it was made, so it must not look fresh later (plan lines 68/70/71).
+    const since = card.discordState === 'conflict' && card.conflictSince && !restartSince
       ? card.conflictSince
       : iso(now());
     const updated = await persistCard(card, (next) => {
@@ -670,6 +672,7 @@ async function runPass(context) {
         discordState: card.discordState,
         boardEvents,
         ...(since === null ? {} : { conflictSince: since }),
+        conflictDiscord: card.conflictDiscord,
       },
       remote: { exists: true, statusTags: remoteStatuses },
       audit: { coverage: audit.coverage, entries: cardEntries },
@@ -735,7 +738,8 @@ async function runPass(context) {
       if (card.discordState === 'conflict' && decision.reason === 'unresolved-conflict') {
         return card;
       }
-      return applyConflict(card, conflictCandidates(card, remoteStatuses), decision.reason ?? 'conflict', judgedPickOf(decision));
+      const judged = judgedPickOf(decision);
+      return applyConflict(card, conflictCandidates(card, remoteStatuses), decision.reason ?? 'conflict', judged, judged !== null && decision.reason === 'unexplained-remote');
     }
     return card;
   };

@@ -121,6 +121,9 @@ export async function makeApiEnv({ remote = true } = {}) {
         client: env.client,
         receipts,
         now: fake.clock.now,
+        // Final-status tests must not depend on the real wall-clock reply budget under
+        // host load. Tests that assert a held or deadline reply pass replyBudgetMs.
+        replyBudgetMs: 30_000,
         ...overrides,
       });
       apis.push(api);
@@ -230,7 +233,7 @@ export async function makeApiEnv({ remote = true } = {}) {
       for (const api of pending) api.abort?.();
       await fake.close();
       for (const api of pending) await api.whenIdle?.();
-      rmSync(parent, { recursive: true, force: true });
+      rmSync(parent, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
     },
   };
 

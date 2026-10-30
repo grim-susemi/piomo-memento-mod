@@ -398,7 +398,12 @@ test('Test_Late_local_board_success_cannot_rewrite_a_newer_pick', async () => {
       return real.update(id, options);
     },
   };
-  const api = await env.api({ store });
+  // The parked first write is held until releaseGate, so its reply can only be the
+  // 2 s deadline pending reply; that budget is explicit. The newer pick runs on a
+  // second instance over the same store with the default budget, so its final reply
+  // does not depend on host load.
+  const api = await env.api({ store, replyBudgetMs: 2_000 });
+  const newer = await env.api();
   const { card, thread } = await linkedFixture(env);
 
   try {
@@ -408,7 +413,7 @@ test('Test_Late_local_board_success_cannot_rewrite_a_newer_pick', async () => {
     assert.equal(replyA.body.discord, 'pending');
 
     env.clock.advance(10_000);
-    const replyB = await api.handle(pick(await env.card(card.id), 'held', 'req-late-new'));
+    const replyB = await newer.handle(pick(await env.card(card.id), 'held', 'req-late-new'));
     assert.equal(replyB.body.discord, 'pushed');
 
     releaseGate();
@@ -423,6 +428,7 @@ test('Test_Late_local_board_success_cannot_rewrite_a_newer_pick', async () => {
   } finally {
     releaseGate();
     await api.whenIdle().catch(() => {});
+    await newer.whenIdle().catch(() => {});
   }
 });
 

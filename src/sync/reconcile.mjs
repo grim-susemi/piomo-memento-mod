@@ -31,6 +31,12 @@ export function reconcile({ card, remote, audit }) {
   const troubled = card.discordState === 'conflict' || card.discordState === 'invalid';
   const resolving = troubled && board?.resolves === true;
   const since = card.conflictSince === undefined ? null : milliseconds(card.conflictSince);
+  // A remote value that is neither the base, the board value, nor a value the open conflict already
+  // showed, with no owner entry visible, is an owner change the audit cannot attribute yet: its order
+  // is not provable.
+  const hidden = !owner && remoteStatus !== null && remoteStatus !== card.discordBase
+    && remoteStatus !== card.status && !(card.conflictDiscord ?? []).includes(remoteStatus)
+    && bots.at(-1)?.to !== remoteStatus;
   const evidence = {
     cardStatus: card.status,
     baseStatus: card.discordBase,
@@ -82,6 +88,7 @@ export function reconcile({ card, remote, audit }) {
     }
     // Even an explicit board pick cannot silently erase a hidden phone roundtrip.
     if (audit.coverage !== 'complete') return action('conflict', 'partial-audit');
+    if (hidden) return action('conflict', 'unexplained-remote');
     if (!owner || (since !== null && !freshOwner)) return chooseBoard();
   }
 
@@ -99,6 +106,7 @@ export function reconcile({ card, remote, audit }) {
   }
   if (!board) return takeOwner();
   if (audit.coverage !== 'complete') return action('conflict', 'partial-audit');
+  if (hidden) return action('conflict', 'unexplained-remote');
   if (!owner) return chooseBoard();
   if (boardInterval[0] > ownerInterval[1]) return chooseBoard();
   if (ownerInterval[0] > boardInterval[1]) return takeOwner();

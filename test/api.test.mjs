@@ -342,7 +342,11 @@ test('Test_Held_discord_response_replies_pending_within_the_write_slot_and_finis
   const { card, thread } = await linkedFixture(env);
   const fakeStart = env.clock.now();
   const wallStart = performance.now();
-  const api = await env.api({ now: () => fakeStart + performance.now() - wallStart });
+  // The real 2 s deadline is under test here, so the budget is explicit.
+  const api = await env.api({
+    now: () => fakeStart + performance.now() - wallStart,
+    replyBudgetMs: 2_000,
+  });
 
   function bounded(promise, label) {
     let timer = null;
@@ -389,7 +393,7 @@ test('Test_Held_discord_response_replies_pending_within_the_write_slot_and_finis
 
 test('Test_Shutdown_aborts_the_continuation_and_leaves_a_durable_pending_op', async () => {
   const env = await setup();
-  const api = await env.api();
+  const api = await env.api({ replyBudgetMs: 2_000 });
   const { card, thread } = await linkedFixture(env);
 
   const hold = env.fake.hooks.holdNext({ method: 'GET', path: `/channels/${thread.id}` });
